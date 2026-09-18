@@ -1,0 +1,1206 @@
+// ---- mobile nav toggle ----
+const navToggle = document.getElementById('navToggle');
+const navLinks = document.getElementById('navLinks');
+if (navToggle && navLinks) {
+  navToggle.addEventListener('click', () => {
+    const isOpen = navLinks.classList.toggle('open');
+    navToggle.setAttribute('aria-expanded', isOpen);
+  });
+}
+
+// ---- nav: shadow once scrolled, and hide when scrolling down ----
+const siteHeader = document.getElementById('siteHeader');
+if (siteHeader) {
+  let lastY = window.scrollY;
+  const onScroll = () => {
+    const y = window.scrollY;
+    siteHeader.classList.toggle('scrolled', y > 12);
+
+    // don't hide while the mobile menu is open, or near the very top
+    const menuOpen = navLinks && navLinks.classList.contains('open');
+    if (!menuOpen && y > 140) {
+      if (y > lastY + 6) {
+        siteHeader.classList.add('nav-hidden');       // scrolling down
+      } else if (y < lastY - 6) {
+        siteHeader.classList.remove('nav-hidden');    // scrolling up
+      }
+    } else {
+      siteHeader.classList.remove('nav-hidden');
+    }
+    lastY = y;
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+}
+
+// ---- footer year ----
+const yearEl = document.getElementById('year');
+if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+// ---- scroll reveal ----
+const revealEls = document.querySelectorAll('.reveal, .enter-fade');
+if ('IntersectionObserver' in window && revealEls.length) {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in-view');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  revealEls.forEach((el) => io.observe(el));
+} else {
+  revealEls.forEach((el) => el.classList.add('in-view'));
+}
+
+// ---- "The Work" spotlight carousel ----
+// Same real copy as before (three cases, all "In progress" — nothing
+// fabricated here), just presented one at a time as a bigger auto-
+// advancing feature instead of a small manually-scrolled row.
+const WORK_CASES = [
+  { flag: 'In progress', title: 'Beverage launch', desc: 'Write-up and results coming soon.' },
+  { flag: 'In progress', title: 'Ambassador program', desc: 'Write-up and results coming soon.' },
+  { flag: 'In progress', title: 'Campus activation', desc: 'Write-up and results coming soon.' },
+];
+
+(function workScroller() {
+  const workSection = document.getElementById('work');
+  const wrap = document.querySelector('.work-scroller-wrap');
+  const scroller = document.getElementById('workScroller');
+  const prevBtn = document.getElementById('workPrev');
+  const nextBtn = document.getElementById('workNext');
+  const dotsEl = document.getElementById('workDots');
+  if (!workSection || !wrap || !scroller || !prevBtn || !nextBtn || !dotsEl) return;
+
+  // computed locally rather than relying on the shared prefersReducedMotion
+  // further down the file — this IIFE runs immediately, before that const
+  // further down has been initialized
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TONES = [1, 3, 5];
+  const AUTO_MS = 4200;
+  let timer = null;
+  let rafId = null;
+
+  // build the slides once — real slide elements, not re-rendered text, so
+  // native scroll-snap and the browser's own scroll physics do the work
+  const slideEls = WORK_CASES.map((item, i) => {
+    const li = document.createElement('li');
+    li.className = 'work-slide';
+    li.tabIndex = 0;
+
+    const cover = document.createElement('div');
+    cover.className = 'work-cover t' + TONES[i % TONES.length];
+    const num = document.createElement('span');
+    num.className = 'work-cover-num';
+    num.textContent = String(i + 1).padStart(2, '0');
+    cover.appendChild(num);
+
+    const info = document.createElement('div');
+    info.className = 'work-info';
+    const flag = document.createElement('span');
+    flag.className = 'case-flag';
+    flag.textContent = item.flag;
+    const h3 = document.createElement('h3');
+    h3.textContent = item.title;
+    const p = document.createElement('p');
+    p.textContent = item.desc;
+    info.append(flag, h3, p);
+
+    li.append(cover, info);
+    li.addEventListener('click', () => goTo(i, true));
+    scroller.appendChild(li);
+    return li;
+  });
+
+  const dotEls = WORK_CASES.map((_, i) => {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = 'work-dot';
+    dot.setAttribute('aria-label', 'Show case ' + (i + 1) + ' of ' + WORK_CASES.length);
+    dot.addEventListener('click', () => goTo(i, true));
+    dotsEl.appendChild(dot);
+    return dot;
+  });
+
+  function nearestIndex() {
+    const center = scroller.scrollLeft + scroller.clientWidth / 2;
+    let best = 0;
+    let bestDist = Infinity;
+    slideEls.forEach((el, i) => {
+      const mid = el.offsetLeft + el.offsetWidth / 2;
+      const dist = Math.abs(mid - center);
+      if (dist < bestDist) { bestDist = dist; best = i; }
+    });
+    return best;
+  }
+
+  // literal colors, not gradient strings — --work-glow is a registered
+  // <color> custom property (see CSS), which is what lets the transition
+  // actually interpolate between them instead of snapping
+  const GLOW_BY_TONE = { 1: '#2E2E33', 2: '#3E2A20', 3: '#223140', 4: '#3A3020', 5: '#4A1D14' };
+
+  // reflects which slide is actually centred right now — driven by real
+  // scroll position, so it stays correct whether you dragged, used the
+  // arrows, or auto-advance moved it. Also shifts the section's own
+  // background to that slide's tone, the same "background follows the
+  // active item" idea as the referenced pen — there it was a real photo
+  // per item; here it's the same tone each cover placeholder already
+  // uses, so the two stay visually tied together.
+  function syncActive() {
+    const i = nearestIndex();
+    slideEls.forEach((el, idx) => el.classList.toggle('is-active', idx === i));
+    dotEls.forEach((d, idx) => d.classList.toggle('active', idx === i));
+    workSection.style.setProperty('--work-glow', GLOW_BY_TONE[TONES[i % TONES.length]]);
+  }
+
+  function onScroll() {
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      syncActive();
+    });
+  }
+  scroller.addEventListener('scroll', onScroll, { passive: true });
+
+  function goTo(i, manual) {
+    const len = slideEls.length;
+    const target = slideEls[((i % len) + len) % len];
+    scroller.scrollTo({
+      left: target.offsetLeft + target.offsetWidth / 2 - scroller.clientWidth / 2,
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
+    if (manual) restartAuto();
+  }
+  function next() { goTo(nearestIndex() + 1, true); }
+  function prev() { goTo(nearestIndex() - 1, true); }
+
+  // instant, no easing, no auto-restart — purely for keeping the current
+  // slide correctly centred when the layout itself changes underneath it
+  function recenter() {
+    const i = nearestIndex();
+    const target = slideEls[i];
+    scroller.scrollTo({
+      left: target.offsetLeft + target.offsetWidth / 2 - scroller.clientWidth / 2,
+      behavior: 'auto',
+    });
+  }
+
+  function stopAuto() {
+    clearInterval(timer);
+    timer = null;
+  }
+  function startAuto() {
+    stopAuto();
+    if (reduceMotion || slideEls.length < 2 || document.hidden) return;
+    timer = setInterval(() => goTo(nearestIndex() + 1, false), AUTO_MS);
+  }
+  function restartAuto() { startAuto(); }
+
+  prevBtn.addEventListener('click', prev);
+  nextBtn.addEventListener('click', next);
+  wrap.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+  });
+  // pause for as long as someone's actually engaging with it — mouse,
+  // touch/drag, or keyboard focus — same as the Clients showcase
+  wrap.addEventListener('mouseenter', stopAuto);
+  wrap.addEventListener('mouseleave', startAuto);
+  wrap.addEventListener('touchstart', stopAuto, { passive: true });
+  wrap.addEventListener('touchend', startAuto, { passive: true });
+  wrap.addEventListener('focusin', stopAuto);
+  wrap.addEventListener('focusout', startAuto);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopAuto(); else startAuto();
+  });
+
+  // start centred on the first slide, then begin auto-advancing
+  goTo(0, false);
+  syncActive();
+  startAuto();
+
+  // --slide's width is viewport-relative (clamp with vw), and changes
+  // again at the 760px breakpoint — recentre instantly so the active
+  // slide doesn't drift off-centre as the layout reflows. Also recentre
+  // once webfonts swap in, since that can shift measured widths slightly.
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(recenter, 120);
+  });
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(recenter);
+  }
+})();
+
+// ---- media source: loaded from the admin portal API ----
+let MEDIA_DATA = {};
+let MEDIA_BASE = '/media/';
+
+function resolveMedia(entry) {
+  if (!entry) return '';
+  return /^https?:\/\//i.test(entry) ? entry : MEDIA_BASE + entry;
+}
+
+function mediaFor(brand) {
+  const entry = MEDIA_DATA[brand] || {};
+  return { photos: entry.photos || [], videos: entry.videos || [] };
+}
+
+// ---- swap real media into the hero feed wall where it exists ----
+
+// Up to 10 videos could all be on-screen AT ONCE with zero scrolling, since
+// most columns fit across the viewport simultaneously on a wide screen —
+// that's 10 concurrent video decodes running continuously just from sitting
+// on the homepage, which is the main thing making the page feel heavy.
+const MAX_HERO_VIDEOS = 3;
+
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const saveData = navigator.connection && navigator.connection.saveData;
+const smallScreen = window.matchMedia('(max-width: 900px)').matches;
+// no hero video on phones, on metered connections, or if motion is reduced
+const allowHeroVideo = !prefersReducedMotion && !saveData && !smallScreen;
+
+// pause anything scrolled out of view
+const heroVideoObserver = ('IntersectionObserver' in window)
+  ? new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const v = entry.target;
+        if (entry.isIntersecting) {
+          v.play().catch(() => {});
+        } else {
+          v.pause();
+        }
+      });
+    }, { threshold: 0.1 })
+  : null;
+
+function hydrateHeroMedia() {
+  const columns = Array.from(document.querySelectorAll('.feed-col'));
+  const photoCounters = {};
+  const videoCounters = {};
+  let videosPlaced = 0;
+
+  columns.forEach((col, colIndex) => {
+    const reels = Array.from(col.querySelectorAll('.reel[data-brand]'));
+    if (!reels.length) return;
+
+    // Each column contains the same set of cards twice, so translateY(-50%)
+    // loops seamlessly. Media must therefore be mirrored between the two
+    // halves, or the content visibly changes every time the loop wraps.
+    const half = Math.floor(reels.length / 2);
+
+    // one video per column, at a staggered height so they don't line up
+    const videoSlot = half ? (colIndex * 2) % half : -1;
+
+    for (let j = 0; j < half; j++) {
+      const reel = reels[j];
+      const twin = reels[j + half];
+      const brand = reel.dataset.brand;
+      const { photos, videos } = mediaFor(brand);
+      if (!photos.length && !videos.length) continue;
+      if (reel.querySelector('.reel-media')) continue;
+
+      const useVideo = allowHeroVideo
+        && videos.length
+        && j === videoSlot
+        && videosPlaced < MAX_HERO_VIDEOS;
+
+      let node;
+      if (useVideo) {
+        const n = videoCounters[brand] = (videoCounters[brand] || 0);
+        videoCounters[brand] = n + 1;
+        node = makeVideo(videos[n % videos.length]);
+        videosPlaced++;
+      } else if (photos.length) {
+        const n = photoCounters[brand] = (photoCounters[brand] || 0);
+        photoCounters[brand] = n + 1;
+        node = makePhoto(photos[n % photos.length]);
+      } else {
+        continue;
+      }
+
+      attachMedia(reel, node);
+      // the twin gets an identical copy, keeping the loop invisible
+      if (twin) attachMedia(twin, node.cloneNode(true), useVideo);
+    }
+  });
+}
+
+function makePhoto(src) {
+  const img = document.createElement('img');
+  img.src = resolveMedia(src);
+  img.alt = '';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  return img;
+}
+
+function makeVideo(clip) {
+  const v = document.createElement('video');
+  v.src = resolveMedia(clip.src);
+  if (clip.poster) v.poster = resolveMedia(clip.poster);
+  v.muted = true;
+  v.loop = true;
+  v.playsInline = true;
+  v.preload = 'none';                     // nothing downloads until it's visible
+  v.setAttribute('aria-hidden', 'true');
+  return v;
+}
+
+function attachMedia(reel, node, isVideo) {
+  node.className = 'reel-media';
+  node.referrerPolicy = 'no-referrer';
+  node.addEventListener('error', () => {
+    node.remove();
+    reel.classList.remove('has-media');
+  });
+  if (node.tagName === 'VIDEO') {
+    node.muted = true;                    // cloneNode drops the muted property
+    if (heroVideoObserver) heroVideoObserver.observe(node);
+    else node.autoplay = true;
+  }
+  reel.insertBefore(node, reel.firstChild);
+  reel.classList.add('has-media');
+}
+
+// load media from the admin portal
+fetch('/api/media', { headers: { Accept: 'application/json' } })
+  .then((r) => (r.ok ? r.json() : Promise.reject()))
+  .then((data) => {
+    if (data && data.media) {
+      MEDIA_DATA = data.media;
+      MEDIA_BASE = data.path || '/media/';
+      hydrateHeroMedia();
+      // hand the full clip list to the spotlight, including videos that
+      // never made it into the wall
+      if (typeof spotlight !== 'undefined') spotlight.rebuild();
+      document.dispatchEvent(new CustomEvent('mediaDataReady'));
+    }
+  })
+  .catch(() => { /* backend unreachable — gradient placeholders stand */ });
+
+// ---- spotlight: cycles through EVERY uploaded video, alternating sides ----
+// Draws from the media list rather than from rendered cards, so clips in
+// columns hidden by a media query — and clips that never made it into the
+// wall at all — still get their turn.
+const spotlight = (function () {
+  // ".hero-pin" is always ~viewport height (the tall ".hero" only exists to
+  // give the zoom effect scroll room), so geometry below stays correct
+  // whether or not the zoom effect is active.
+  const hero = document.querySelector('.hero-pin') || document.querySelector('.hero');
+
+  const INTERVAL = 5200;      // gap between spotlights
+  const GROW_MS = 620;        // lift + expand
+  const HOLD_MS = 3000;       // time held large
+  const SHRINK_MS = 460;      // fade back out
+  const MARGIN = 44;          // distance from the screen edge
+  const ALLOWED_OVERLAP = 60; // how far it may sit behind the headline column
+
+  let clips = [];             // every uploaded video, across all brands
+  let queue = [];             // shuffled play order for the current round
+  let onLeft = true;
+  let busy = false;
+  let busySince = 0;
+  let timer = null;
+  let heroVisible = true;     // only run while the hero is actually on screen
+  let activePanel = null;     // the panel currently on screen, if any
+  let closeTimers = [];       // its pending timeouts, so they can be cancelled
+
+  // The hero-zoom system (js/hero-zoom.js, built on GSAP ScrollTrigger)
+  // fires these based on the zoom's own playhead: 'heroZoomDone' the moment
+  // it starts engaging, 'heroZoomReturn' when it's fully back at rest.
+  // The spotlight must be off during the whole zoom — it's a fixed-position
+  // panel, so if it fired mid-animation it would sit on top of the zooming
+  // hero and disrupt it.
+  document.addEventListener('heroZoomDone', () => {
+    heroVisible = false;
+    closeActivePanel();      // don't wait for the hold timer — stop right now
+  });
+  document.addEventListener('heroZoomReturn', () => {
+    heroVisible = true;
+  });
+
+  // The feed-wall videos fade out via opacity during the zoom, but opacity
+  // doesn't pause decoding — up to 3 videos kept playing fully invisible for
+  // the entire zoom, burning CPU/GPU exactly when the 240x scale needs every
+  // bit of frame budget it can get. Pausing them here removes that cost
+  // completely while the zoom is active, and picks back up where it left
+  // off (loop:true videos resume seamlessly) once it returns to rest.
+  document.addEventListener('heroZoomDone', () => {
+    document.querySelectorAll('.feed-wall video.reel-media').forEach((v) => v.pause());
+  });
+  document.addEventListener('heroZoomReturn', () => {
+    document.querySelectorAll('.feed-wall video.reel-media').forEach((v) => {
+      v.play().catch(() => {});
+    });
+  });
+
+  function closeActivePanel() {
+    closeTimers.forEach(clearTimeout);
+    closeTimers = [];
+    if (activePanel) {
+      activePanel.remove();
+      activePanel = null;
+    }
+    busy = false;
+  }
+
+  const roomForSpotlight = () => window.matchMedia('(min-width: 1101px)').matches;
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // rebuild the clip list from the media the admin portal returned
+  function rebuild() {
+    clips = [];
+    Object.keys(MEDIA_DATA || {}).forEach((brand) => {
+      const vids = (MEDIA_DATA[brand] && MEDIA_DATA[brand].videos) || [];
+      vids.forEach((v) => {
+        if (!v || !v.src) return;
+        clips.push({
+          brand,
+          src: resolveMedia(v.src),
+          poster: v.poster ? resolveMedia(v.poster) : '',
+        });
+      });
+    });
+    queue = shuffle(clips);
+    start();
+  }
+
+  function nextClip() {
+    if (!clips.length) return null;
+    if (!queue.length) queue = shuffle(clips);   // round finished — reshuffle
+    return queue.shift();
+  }
+
+  // width that fits in the gutter beside the centred headline, or null
+  function panelWidth() {
+    const contentW = Math.min(1240, window.innerWidth - 60);
+    const gutter = (window.innerWidth - contentW) / 2;
+    const maxW = gutter - MARGIN + ALLOWED_OVERLAP;
+    return maxW < 190 ? null : Math.min(maxW, 300);
+  }
+
+  // if this clip happens to be on screen in the wall, lift it from there
+  function visibleCardFor(src) {
+    if (!hero) return null;
+    const heroRect = hero.getBoundingClientRect();
+    const headerH = (document.getElementById('siteHeader') || {}).offsetHeight || 0;
+    const file = src.split('/').pop();
+    const cards = document.querySelectorAll('.reel.has-media');
+    for (const c of cards) {
+      const m = c.querySelector('.reel-media');
+      if (!m || m.tagName !== 'VIDEO') continue;
+      const s = m.getAttribute('src') || m.src || '';
+      if (!s.endsWith(file)) continue;
+      const r = c.getBoundingClientRect();
+      if (r.width > 0
+        && r.top > Math.max(heroRect.top, headerH) + 40
+        && r.bottom < heroRect.bottom - 40) return c;
+    }
+    return null;
+  }
+
+  function run() {
+    // watchdog: recover if a previous cycle never released
+    if (busy && Date.now() - busySince > GROW_MS + HOLD_MS + SHRINK_MS + 2000) {
+      closeActivePanel();
+    }
+    if (busy || document.hidden || !heroVisible || !roomForSpotlight()) return;
+
+    // The hero-zoom sequence (js/hero-zoom.js) fades the feed wall toward
+    // opacity:0 while scrolling through the zoom track — but doesn't change
+    // its layout size, so a pure geometry check here would still consider it
+    // "visible" and pop an enlarged panel over an almost-invisible wall.
+    // Bail out while that fade is happening.
+    const feedWallEl = document.querySelector('.feed-wall');
+    if (feedWallEl && parseFloat(getComputedStyle(feedWallEl).opacity) < 0.5) return;
+
+    const targetW = panelWidth();
+    if (!targetW) return;
+
+    const clip = nextClip();
+    if (!clip) return;
+
+    busy = true;
+    busySince = Date.now();
+
+    const targetH = targetW * (16 / 9);
+    const targetLeft = onLeft ? MARGIN : window.innerWidth - MARGIN - targetW;
+    const headerH = (document.getElementById('siteHeader') || {}).offsetHeight || 0;
+    let targetTop = (window.innerHeight - targetH) / 2;
+    targetTop = Math.max(headerH + 28,
+      Math.min(targetTop, window.innerHeight - 28 - targetH));
+    onLeft = !onLeft;
+
+    // start from the matching card if it's on screen, otherwise grow in place
+    const card = visibleCardFor(clip.src);
+    let from;
+    if (card) {
+      from = card.getBoundingClientRect();
+      card.classList.add('picking');
+      setTimeout(() => card.classList.remove('picking'), 520);
+    } else {
+      const w = targetW * 0.55;
+      const h = targetH * 0.55;
+      from = {
+        left: targetLeft + (targetW - w) / 2,
+        top: targetTop + (targetH - h) / 2,
+        width: w,
+        height: h,
+      };
+    }
+
+    const panel = document.createElement('div');
+    panel.className = 'spotlight';
+    panel.style.left = from.left + 'px';
+    panel.style.top = from.top + 'px';
+    panel.style.width = from.width + 'px';
+    panel.style.height = from.height + 'px';
+
+    const video = document.createElement('video');
+    video.src = clip.src;
+    if (clip.poster) video.poster = clip.poster;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.autoplay = true;
+    video.preload = 'auto';
+    video.disablePictureInPicture = true;
+    video.disableRemotePlayback = true;
+    panel.appendChild(video);
+
+    const label = document.createElement('span');
+    label.className = 'spotlight-name';
+    label.textContent = clip.brand || '';
+    panel.appendChild(label);
+
+    document.body.appendChild(panel);
+    activePanel = panel;
+    video.play().catch(() => {});
+
+    panel.animate([
+      { transform: 'translate(0,0) scale(1)', opacity: 0.5 },
+      {
+        transform:
+          `translate(${targetLeft - from.left}px, ${targetTop - from.top}px) ` +
+          `scale(${targetW / from.width}, ${targetH / from.height})`,
+        opacity: 1,
+      },
+    ], { duration: GROW_MS, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' });
+
+    // explicit timers rather than chained finish events, so a missed event
+    // can't leave the panel on screen forever
+    closeTimers.push(setTimeout(() => {
+      panel.animate([{ opacity: 1 }, { opacity: 0 }],
+        { duration: SHRINK_MS, easing: 'ease-in', fill: 'forwards' });
+    }, GROW_MS + HOLD_MS));
+
+    closeTimers.push(setTimeout(() => {
+      panel.remove();
+      if (activePanel === panel) activePanel = null;
+      busy = false;
+    }, GROW_MS + HOLD_MS + SHRINK_MS + 60));
+  }
+
+  function start() {
+    clearInterval(timer);
+    if (!hero || !clips.length) return;
+    if (prefersReducedMotion || saveData) return;
+    timer = setInterval(run, INTERVAL);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearInterval(timer);
+    else start();
+  });
+
+  return { rebuild };
+})();
+
+// ---- Connect section: "brands" / "campuses" rolling word-swap ----
+(function swapWords() {
+  const slots = document.querySelectorAll('#connect .swap');
+  if (!slots.length) return;
+
+  // The two words are different lengths ("brands" vs "campuses") — lock
+  // each slot's width to whichever face is wider, measured once, so the
+  // surrounding sentence never reflows when the swap happens.
+  // Measures a word's true rendered width via a temporary, invisible,
+  // normal-flow clone — NOT by measuring the real .swap-face element
+  // directly. The real faces are position:absolute with inset:0, which
+  // makes them stretch to match their container's current size rather
+  // than their own content width — so measuring them directly reads back
+  // whatever (wrong) size the container already has, not the word's
+  // actual width. A detached clone has no such constraint.
+  function measureWordWidth(face) {
+    const clone = document.createElement('span');
+    clone.textContent = face.textContent;
+    const cs = getComputedStyle(face);
+    clone.style.cssText =
+      'position:absolute;visibility:hidden;white-space:nowrap;' +
+      'font:' + cs.font + ';text-transform:' + cs.textTransform + ';' +
+      'letter-spacing:' + cs.letterSpacing + ';';
+    document.body.appendChild(clone);
+    const width = clone.getBoundingClientRect().width;
+    clone.remove();
+    return width;
+  }
+
+  function lockWidths() {
+    slots.forEach((slot) => {
+      const faces = slot.querySelectorAll('.swap-face');
+      let max = 0;
+      faces.forEach((f) => { max = Math.max(max, measureWordWidth(f)); });
+      slot.style.width = Math.ceil(max) + 'px';
+    });
+  }
+  lockWidths();
+  window.addEventListener('resize', lockWidths);
+
+  if (prefersReducedMotion) return;   // static text, no continuous motion
+
+  let timer = null;
+  function start() {
+    if (timer) return;
+    timer = setInterval(() => {
+      slots.forEach((slot) => slot.classList.toggle('flipped'));
+    }, 3000);
+  }
+  function stop() {
+    clearInterval(timer);
+    timer = null;
+  }
+
+  // only run the loop while the section is actually visible — no point
+  // animating something nobody can see
+  const section = document.getElementById('connect');
+  if (section && 'IntersectionObserver' in window) {
+    new IntersectionObserver(
+      (entries) => { entries[0].isIntersecting ? start() : stop(); },
+      { threshold: 0.2 }
+    ).observe(section);
+  } else {
+    start();
+  }
+})();
+
+// ---- Campus Activations: expands once, permanently, when centred ----
+// A real height change (not a transform illusion) so it correctly reserves
+// space for itself — that's what keeps Work from getting buried. Fires
+// once via rootMargin trimming the observer's root to a single line at the
+// viewport's vertical centre, then unobserves — it never reverts.
+(function bandExpand() {
+  const bandEl = document.querySelector('.band');
+  if (!bandEl || !('IntersectionObserver' in window) || prefersReducedMotion) return;
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          bandEl.classList.add('expand');
+          io.unobserve(bandEl);
+        }
+      });
+    },
+    { rootMargin: '-50% 0px -50% 0px', threshold: 0 }
+  );
+  io.observe(bandEl);
+})();
+
+// ---- Campus Activations: white fill that crawls out from the button ----
+(function bandButtonReveal() {
+  const bandEl = document.querySelector('.band');
+  const btnEl = bandEl && bandEl.querySelector('.btn');
+  if (!bandEl || !btnEl || prefersReducedMotion) return;
+
+  // Position the reveal's origin exactly at the button, as a % of the
+  // band's own box — the button isn't centred in the layout, so this has
+  // to be measured, not guessed.
+  function updateOrigin() {
+    const bandRect = bandEl.getBoundingClientRect();
+    const btnRect = btnEl.getBoundingClientRect();
+    if (!bandRect.width || !bandRect.height) return;
+    const x = ((btnRect.left + btnRect.width / 2) - bandRect.left) / bandRect.width * 100;
+    const y = ((btnRect.top + btnRect.height / 2) - bandRect.top) / bandRect.height * 100;
+    bandEl.style.setProperty('--btn-x', x.toFixed(2) + '%');
+    bandEl.style.setProperty('--btn-y', y.toFixed(2) + '%');
+  }
+
+  updateOrigin();
+  window.addEventListener('resize', updateOrigin);
+  // the band's own expand animation (above) changes its size, which moves
+  // the button's position relative to it — recalculate once that settles
+  bandEl.addEventListener('transitionend', (e) => {
+    if (e.propertyName === 'min-height') updateOrigin();
+  });
+
+  // pointerenter/leave rather than mouseenter/mouseleave, gated to real
+  // mice specifically. This is a link that navigates on tap — on touch,
+  // a tap fires a synthetic mouseenter (for :hover compatibility) but the
+  // page navigates before a mouseleave ever fires, which would leave the
+  // white fill permanently stuck open. Checking pointerType per-event is
+  // also more reliable than a device-level media query, which can
+  // misclassify hybrid touchscreen+mouse laptops.
+  btnEl.addEventListener('pointerenter', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    updateOrigin();   // covers the rare case of hovering mid-expand
+    bandEl.classList.add('btn-hover');
+  });
+  btnEl.addEventListener('pointerleave', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    bandEl.classList.remove('btn-hover');
+  });
+  // keyboard focus gets the same treatment, for parity with mouse hover
+  btnEl.addEventListener('focus', () => {
+    updateOrigin();
+    bandEl.classList.add('btn-hover');
+  });
+  btnEl.addEventListener('blur', () => {
+    bandEl.classList.remove('btn-hover');
+  });
+})();
+
+const clientsSection = document.getElementById('clientsSection');
+const brandPanel = document.getElementById('brandPanel');
+const brandPanelName = document.getElementById('brandPanelName');
+const brandPanelNote = document.getElementById('brandPanelNote');
+const showcaseTrack = document.getElementById('showcaseTrack');
+const showcaseCarousel = document.getElementById('showcaseCarousel');
+const showcasePrev = document.getElementById('showcasePrev');
+const showcaseNext = document.getElementById('showcaseNext');
+const showcaseDots = document.getElementById('showcaseDots');
+const clientTabsEl = document.getElementById('clientTabs');
+
+if (clientsSection && brandPanel && showcaseTrack && clientTabsEl) {
+  const TONES = [1, 3, 4, 2, 5];
+  const AUTO_MS = 4200;
+  const clientTabs = Array.from(document.querySelectorAll('.client-tab'));
+  const canHover = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+
+  let currentBrand = null;   // whatever the showcase is currently built from
+  let lockedBrand = null;    // the last brand actually clicked/activated
+  let previewTimer = null;
+  let pool = [];             // this brand's real media, normalized
+  let activeIndex = 0;       // which pool item sits centre-stage
+  let autoTimer = null;
+
+  function toneFor(i) { return TONES[i % TONES.length]; }
+
+  // Videos → photos, each normalized to {type, src, poster?}. Side slides
+  // in the carousel never decode video themselves (only the centre slide
+  // does), so every video entry also carries a still to show when it's
+  // sitting in a side position — its own poster if it has one, else the
+  // brand's first photo, so a side slide is never left blank.
+  function getPool(media) {
+    const fallbackPhoto = media.photos[0] || '';
+    const pool = [];
+    media.videos.forEach((v) => {
+      if (v && v.src) pool.push({ type: 'video', src: v.src, poster: v.poster || fallbackPhoto });
+    });
+    media.photos.forEach((p) => {
+      if (p) pool.push({ type: 'photo', src: p });
+    });
+    return pool.slice(0, 8); // sane cap — plenty for a rotation, no runaway DOM/memory cost
+  }
+
+  // The note under the brand name used to say the same fixed placeholder
+  // line for every brand, even ones that already had real content. Now it
+  // reflects a real, counted total, and only falls back to "being added"
+  // when there's truly nothing yet.
+  function updateNote(total) {
+    if (!brandPanelNote) return;
+    if (total > 0) {
+      brandPanelNote.textContent = total === 1
+        ? '1 piece of campaign content'
+        : total + ' pieces of campaign content';
+      brandPanelNote.classList.remove('empty');
+    } else {
+      brandPanelNote.textContent = 'Campaign content for this brand is being added.';
+      brandPanelNote.classList.add('empty');
+    }
+  }
+
+  // Small status dot per tab — filled once that brand actually has
+  // uploaded media, so the picker itself hints at what's worth clicking
+  // before anything is clicked. Safe pre-fetch; re-run on mediaDataReady.
+  function updateStatusDots() {
+    clientTabs.forEach((tab) => {
+      const dot = tab.querySelector('.client-tab-status');
+      if (!dot) return;
+      const media = mediaFor(tab.dataset.brand);
+      dot.classList.toggle('has-media', (media.photos.length + media.videos.length) > 0);
+    });
+  }
+
+  function buildPhoneEl(item, positionClass, tone) {
+    const phone = document.createElement('div');
+    phone.className = 'phone ' + positionClass;
+
+    const screen = document.createElement('div');
+    screen.className = 'phone-screen t' + tone;
+    const isCenter = positionClass === 'is-center';
+
+    if (item && item.type === 'video' && isCenter) {
+      const video = document.createElement('video');
+      video.className = 'phone-media';
+      video.src = resolveMedia(item.src);
+      if (item.poster) video.poster = resolveMedia(item.poster);
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.autoplay = true;
+      video.preload = 'auto';
+      video.disablePictureInPicture = true;
+      video.disableRemotePlayback = true;
+      video.addEventListener('error', () => {
+        video.remove();
+        screen.classList.remove('has-media');
+      });
+      screen.appendChild(video);
+      screen.classList.add('has-media');
+    } else if (item && item.type === 'video') {
+      // side slide: show its still, never decode the clip itself
+      const posterSrc = item.poster || '';
+      if (posterSrc) {
+        const img = document.createElement('img');
+        img.className = 'phone-media';
+        img.src = resolveMedia(posterSrc);
+        img.alt = '';
+        img.loading = 'lazy';
+        img.referrerPolicy = 'no-referrer';
+        img.addEventListener('error', () => {
+          img.remove();
+          screen.classList.remove('has-media');
+        });
+        screen.appendChild(img);
+        screen.classList.add('has-media');
+      }
+    } else if (item && item.type === 'photo') {
+      const img = document.createElement('img');
+      img.className = 'phone-media';
+      img.src = resolveMedia(item.src);
+      img.alt = '';
+      img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
+      img.addEventListener('error', () => {
+        img.remove();
+        screen.classList.remove('has-media');
+      });
+      screen.appendChild(img);
+      screen.classList.add('has-media');
+    }
+
+    screen.insertAdjacentHTML('beforeend',
+      '<span class="phone-notch"></span>' +
+      (screen.classList.contains('has-media') ? '' : '<span class="phone-play"></span>'));
+
+    phone.appendChild(screen);
+    phone.insertAdjacentHTML('beforeend', '<span class="phone-cam-control"></span>');
+    return phone;
+  }
+
+  function renderDots(len) {
+    showcaseDots.innerHTML = '';
+    if (len < 2) return;
+    for (let i = 0; i < len; i++) {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'showcase-dot' + (i === activeIndex ? ' active' : '');
+      dot.setAttribute('aria-label', 'Show clip ' + (i + 1) + ' of ' + len);
+      dot.addEventListener('click', () => goTo(i, true));
+      showcaseDots.appendChild(dot);
+    }
+  }
+
+  // Five slots when there's enough real content to fill them without
+  // repeating the same clip twice (needs at least 5 distinct items);
+  // three when there's less than that but more than one; just the centre
+  // otherwise. Keeps the carousel from ever showing a duplicate in view.
+  function renderCarousel() {
+    showcaseTrack.innerHTML = '';
+    const len = pool.length;
+
+    if (len < 2) {
+      showcaseCarousel.classList.add('single');
+      showcaseDots.innerHTML = '';
+      showcaseTrack.appendChild(buildPhoneEl(pool[0] || null, 'is-center', toneFor(0)));
+      return;
+    }
+
+    showcaseCarousel.classList.remove('single');
+    const nearPrevIdx = (activeIndex - 1 + len) % len;
+    const nearNextIdx = (activeIndex + 1) % len;
+    const useFar = len >= 5;
+
+    const slides = [];
+    if (useFar) slides.push({ idx: (activeIndex - 2 + len) % len, cls: 'is-far', label: 'Show earlier clip' });
+    slides.push({ idx: nearPrevIdx, cls: 'is-near', label: 'Show previous clip' });
+    slides.push({ idx: activeIndex, cls: 'is-center', label: null });
+    slides.push({ idx: nearNextIdx, cls: 'is-near', label: 'Show next clip' });
+    if (useFar) slides.push({ idx: (activeIndex + 2) % len, cls: 'is-far', label: 'Show later clip' });
+
+    slides.forEach((s) => {
+      const el = buildPhoneEl(pool[s.idx], s.cls, toneFor(s.idx));
+      if (s.label) {
+        el.setAttribute('role', 'button');
+        el.setAttribute('tabindex', '0');
+        el.setAttribute('aria-label', s.label);
+        const jump = () => goTo(s.idx, true);
+        el.addEventListener('click', jump);
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jump(); }
+        });
+      }
+      showcaseTrack.appendChild(el);
+    });
+
+    renderDots(len);
+  }
+
+  function goTo(index, manual) {
+    const len = pool.length;
+    if (!len) return;
+    activeIndex = ((index % len) + len) % len;
+    renderCarousel();
+    if (manual) restartAuto();
+  }
+  function next() { goTo(activeIndex + 1, true); }
+  function prev() { goTo(activeIndex - 1, true); }
+
+  function stopAuto() {
+    clearInterval(autoTimer);
+    autoTimer = null;
+  }
+  // Auto-advance is the whole point of the "slider" — but it steps aside
+  // the moment anyone actually engages with it: hovering, focusing a
+  // control, or the tab going into the background all pause it, and nothing
+  // auto-advances at all under reduced motion.
+  function startAuto() {
+    stopAuto();
+    if (prefersReducedMotion || pool.length < 2 || document.hidden) return;
+    autoTimer = setInterval(() => {
+      activeIndex = (activeIndex + 1) % pool.length;
+      renderCarousel();
+    }, AUTO_MS);
+  }
+  function restartAuto() { startAuto(); }
+
+  function selectBrand(brand) {
+    if (brand === currentBrand) return;
+    currentBrand = brand;
+    const media = mediaFor(brand);
+    pool = getPool(media);
+    activeIndex = 0;
+    brandPanelName.textContent = brand;
+    updateNote(media.photos.length + media.videos.length);
+    clientTabs.forEach((tab) => tab.classList.toggle('active', tab.dataset.brand === brand));
+    renderCarousel();
+    startAuto();
+  }
+
+  clientTabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => {
+      clearTimeout(previewTimer);
+      lockedBrand = tab.dataset.brand;
+      selectBrand(lockedBrand);
+    });
+
+    // Desktop-only preview: resting on a tab shows it without committing;
+    // moving off reverts to whatever was actually clicked. Gated to real
+    // hover+fine-pointer devices so it never fires from a touch tap.
+    if (canHover) {
+      tab.addEventListener('mouseenter', () => {
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(() => selectBrand(tab.dataset.brand), 150);
+      });
+    }
+
+    // Roving arrow-key navigation between tabs.
+    tab.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const dir = e.key === 'ArrowRight' ? 1 : -1;
+      clientTabs[(i + dir + clientTabs.length) % clientTabs.length].focus();
+    });
+  });
+
+  if (canHover) {
+    clientTabsEl.addEventListener('mouseleave', () => {
+      clearTimeout(previewTimer);
+      if (lockedBrand) selectBrand(lockedBrand);
+    });
+  }
+
+  if (showcasePrev) showcasePrev.addEventListener('click', prev);
+  if (showcaseNext) showcaseNext.addEventListener('click', next);
+  if (showcaseCarousel) {
+    showcaseCarousel.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+    });
+    // pause the auto-advance for as long as someone's actually engaging
+    // with the carousel, by mouse or by keyboard
+    showcaseCarousel.addEventListener('mouseenter', stopAuto);
+    showcaseCarousel.addEventListener('mouseleave', startAuto);
+    showcaseCarousel.addEventListener('focusin', stopAuto);
+    showcaseCarousel.addEventListener('focusout', startAuto);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopAuto(); else startAuto();
+  });
+
+  // show content immediately — first brand in the picker, no interaction needed
+  const firstTab = clientTabs[0];
+  if (firstTab) {
+    lockedBrand = firstTab.dataset.brand;
+    selectBrand(lockedBrand);
+  }
+  updateStatusDots();
+
+  // MEDIA_DATA loads asynchronously from the admin API, and typically
+  // hasn't arrived yet by the time the block above runs — without this,
+  // the very first showcase on page load would be stuck on a placeholder
+  // even when that brand already has real uploaded content, until someone
+  // happened to switch brands and back. This rebuilds the pool once the
+  // real data is in, whether or not the brand selection has changed.
+  document.addEventListener('mediaDataReady', () => {
+    updateStatusDots();
+    const media = mediaFor(currentBrand);
+    pool = getPool(media);
+    activeIndex = 0;
+    updateNote(media.photos.length + media.videos.length);
+    renderCarousel();
+    startAuto();
+  });
+}
+
+
+// ---- sticky mobile CTA: show after the hero, hide over the contact form ----
+const stickyCta = document.getElementById('stickyCta');
+const contactSection = document.getElementById('contact');
+if (stickyCta && contactSection) {
+  const heroEl = document.querySelector('.hero');
+  const update = () => {
+    const pastHero = heroEl ? window.scrollY > heroEl.offsetHeight * 0.7 : window.scrollY > 500;
+    const contactTop = contactSection.getBoundingClientRect().top;
+    const atContact = contactTop < window.innerHeight * 0.9;
+    stickyCta.classList.toggle('show', pastHero && !atContact);
+  };
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  update();
+}
+
+// ---- FAQ: only one answer open at a time ----
+const faqItems = document.querySelectorAll('.faq-item');
+faqItems.forEach((item) => {
+  item.addEventListener('toggle', () => {
+    if (!item.open) return;
+    faqItems.forEach((other) => {
+      if (other !== item) other.open = false;
+    });
+  });
+});
+
+// ---- close the mobile menu after tapping a link ----
+if (navLinks) {
+  navLinks.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', () => {
+      navLinks.classList.remove('open');
+      if (navToggle) navToggle.setAttribute('aria-expanded', 'false');
+    });
+  });
+}
+
+
+// Note: the hero scroll-zoom effect lives in js/hero-zoom.js, not here —
+// it's built on GSAP ScrollTrigger and kept in its own file.
+
+// ---- contact section: blurred background video ----
+// Same honest situation as How It Works and the services showcase —
+// there's no dedicated "contact" footage, so this reuses real uploaded
+// brand campaign video, purely for ambient motion/colour behind the form.
+(function contactBackgroundVideo() {
+  const video = document.getElementById('contactVideo');
+  if (!video) return;
+
+  function assignVideo() {
+    const brands = Object.keys(typeof MEDIA_DATA !== 'undefined' ? MEDIA_DATA : {});
+    for (const brand of brands) {
+      const vids = (MEDIA_DATA[brand] && MEDIA_DATA[brand].videos) || [];
+      if (vids.length && vids[0].src && typeof resolveMedia === 'function') {
+        video.src = resolveMedia(vids[0].src);
+        video.play().catch(() => {});
+        return;
+      }
+    }
+  }
+
+  assignVideo();
+  document.addEventListener('mediaDataReady', assignVideo);
+
+  const section = document.getElementById('contact');
+  if (section && 'IntersectionObserver' in window) {
+    new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) video.play().catch(() => {});
+        else video.pause();
+      },
+      { threshold: 0.1 }
+    ).observe(section);
+  }
+})();
+
+// ---- contact form modal ----
+(function contactModal() {
+  const modal = document.getElementById('contactModal');
+  const backdrop = document.getElementById('contactModalBackdrop');
+  const closeBtn = document.getElementById('contactModalClose');
+  const openers = [
+    document.getElementById('openContactModal'),
+    document.getElementById('openContactModalFooter'),
+  ].filter(Boolean);
+  if (!modal || !openers.length) return;
+
+  function open(e) {
+    if (e) e.preventDefault();
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.documentElement.classList.add('modal-open');
+    document.body.classList.add('modal-open');
+  }
+  function close() {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.documentElement.classList.remove('modal-open');
+    document.body.classList.remove('modal-open');
+  }
+
+  openers.forEach((el) => el.addEventListener('click', open));
+  if (backdrop) backdrop.addEventListener('click', close);
+  if (closeBtn) closeBtn.addEventListener('click', close);
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('open')) close();
+  });
+})();
+
+// ---- contact form (front-end only for now — not wired to email yet) ----
+const form = document.getElementById('contactForm');
+const formMsg = document.getElementById('formMsg');
+if (form && formMsg) {
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    formMsg.textContent = "Thanks — this form isn't connected to email yet, so nothing was sent. Once the backend is wired up this will reach the team directly.";
+    formMsg.style.color = '#3B4B63';
+    formMsg.classList.add('show');
+  });
+}

@@ -1,0 +1,447 @@
+{
+  "nextBrandId": 10,
+  "nextMediaId": 64,
+  "brands": [
+    {
+      "id": 1,
+      "name": "HelloFresh",
+      "sort_order": 0,
+      "created_at": "2026-09-03T12:46:08.481Z"
+    },
+    {
+      "id": 2,
+      "name": "Carlsberg",
+      "sort_order": 1,
+      "created_at": "2026-09-03T12:46:08.483Z"
+    },
+    {
+      "id": 3,
+      "name": "Dirty Devil Vodka",
+      "sort_order": 2,
+      "created_at": "2026-09-03T12:46:08.483Z"
+    },
+    {
+      "id": 4,
+      "name": "Crank Lite Lager",
+      "sort_order": 3,
+      "created_at": "2026-09-03T12:46:08.483Z"
+    },
+    {
+      "id": 5,
+      "name": "Little Buddha Cocktail Co.",
+      "sort_order": 4,
+      "created_at": "2026-09-03T12:46:08.483Z"
+    },
+    {
+      "id": 6,
+      "name": "XLIV Loungewear",
+      "sort_order": 5,
+      "created_at": "2026-09-03T12:46:08.483Z"
+    },
+    {
+      "id": 7,
+      "name": "Bet99 Sportsbook",
+      "sort_order": 6,
+      "created_at": "2026-09-03T12:46:08.483Z"
+    },
+    {
+      "id": 8,
+      "name": "Reign Energy",
+      "sort_order": 7,
+      "created_at": "2026-09-03T12:46:08.483Z"
+    },
+    {
+      "id": 9,
+      "name": "Twisted Tea",
+      "sort_order": 8,
+      "created_at": "2026-09-17T18:18:11.882Z"
+    }
+  ],
+  "media": [
+    {
+      "id": 8,
+      "brand_id": 3,
+      "kind": "video",
+      "filename": "fc8cfd583913605c3e2d.mp4",
+      "poster": null,
+      "original": "From Klickpin.com- Try Dreamy boho home decor that turn ordinary plans into beautiful ideas people want to copy fast for ideas worth saving right.mp4",
+      "bytes": 7166397,
+      "sort_order": 0,
+      "created_at": "2026-09-03T13:02:15.375Z"
+    },
+    {
+      "id": 10,
+      "brand_id": 5,
+      "kind": "video",
+      "filename": "13ae446d5d69d5431c2b.mp4",
+      "poster": null,
+      "original": "From Klickpin.com- Scenic hidden country gems with charm and useful ideas on a budget to pin for future adventures-pin-id-211598882487386185.mp4",
+      "bytes": 3827495,
+      "sort_order": 0,
+      "created_at": "2026-09-03T13:02:27.101Z"
+    },
+    {
+      "id": 11,
+      "brand_id": 3,
+      "kind": "photo",
+      "filename": "955a9d5660edcce52c18.jpg",
+      "poster": null,
+      "original": "90a19c5f67e28e1dd534b1cf441914b3.jpg",
+      "bytes": 105884,
+      "sort_order": 1,
+      "created_at": "2026-09-03T13:02:57.695Z"
+    },
+    {
+      "id": 13,
+      "brand_id": 6,
+      "kind": "photo",
+      "filename": "ce01298624c594370097.jpg",
+      "poster": null,
+      "original": "7865489cff6b798ad83a23f4eef5f9a5.jpg",
+      "bytes": 87983,
+      "sort_order": 0,
+      "created_at": "2026-09-03T13:03:04.870Z"
+    },
+    {
+      "id": 14,
+      "brand_id": 6,
+      "kind": "photo",
+      "filename": "efa41049e64f5da0d2dc.jpg",
+      "poster": null,
+      "original": "90c88ac58ae86dcf152805164eac8f43.jpg",
+      "bytes": 85624,
+      "sort_order": 1,
+      "created_at": "2026-09-03T13:03:04.874Z"
+    },
+    {
+      "id": 19,
+      "brand_id": 4,
+      "kind": "photo",
+      "filename": "fba1a190d302bfe578b3.jpg",
+      "poster": null,
+      "original": "9021ba922b6195830e3f7e4adb8da1c5.jpg",
+      "bytes": 50110,
+      "sort_order": 1,
+      "created_at": "2026-09-03T13:05:27.994Z"
+    },
+    {
+      "id": 20,
+      "brand_id": 4,
+      "kind": "photo",
+      "filename": "9d715c5d9b13f8947c14.jpg",
+      "poster": null,
+      "original": "f875c6046fad3a54bb09ef8f657c138e.jpg",
+      "bytes": 62705,
+      "sort_order": 2,
+      "created_at": "2026-09-03T13:05:27.999Z"
+    },
+    {
+      "id": 26,
+      "brand_id": 5,
+      "kind": "photo",
+      "filename": "3b630ab2e5a6987fa7e8.jpg",
+      "poster": null,
+      "original": "9eca4a863306c0ec8006187c0257926a.jpg",
+      "bytes": 89621,
+      "sort_order": 4,
+      "created_at": "2026-09-03T13:05:40.750Z"
+    },
+    {
+      "id": 28,
+      "brand_id": 6,
+      "kind": "video",
+      "filename": "c332c28aebeedd19e674.mp4",
+      "poster": null,
+      "original": "From Klickpin.com- 965740713861952616-pin-id-965740713861952616.mp4",
+      "bytes": 2043422,
+      "sort_order": 2,
+      "created_at": "2026-09-03T13:11:23.333Z"
+    },
+    {
+      "id": 30,
+      "brand_id": 8,
+      "kind": "video",
+      "filename": "5491cb1875e9ef0391e3.mp4",
+      "poster": null,
+      "original": "From Klickpin.com- Discover Unique vision board ideas that help you create a beautiful result without overspending for ideas worth saving right no.mp4",
+      "bytes": 1591988,
+      "sort_order": 2,
+      "created_at": "2026-09-03T13:11:33.430Z"
+    },
+    {
+      "id": 31,
+      "brand_id": 2,
+      "kind": "video",
+      "filename": "49db27e14a5e180a9fcd.mp4",
+      "poster": null,
+      "original": "From Klickpin.com- Golden forest walks for cozy moods with simple charm and practical value to refresh your mood-pin-id-9499849210520348.mp4",
+      "bytes": 1037316,
+      "sort_order": 4,
+      "created_at": "2026-09-03T13:12:26.870Z"
+    },
+    {
+      "id": 34,
+      "brand_id": 8,
+      "kind": "photo",
+      "filename": "ed3f4e74b8eeb45d0160.jpg",
+      "poster": null,
+      "original": "sports.jpg",
+      "bytes": 88941,
+      "sort_order": 1,
+      "created_at": "2026-09-07T23:43:57.725Z"
+    },
+    {
+      "id": 35,
+      "brand_id": 2,
+      "kind": "photo",
+      "filename": "0888b043222e400cd2c0.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_528984598_18050575010541659_4638319894226275976_n.jpg",
+      "bytes": 517753,
+      "sort_order": 2,
+      "created_at": "2026-09-17T16:55:35.333Z"
+    },
+    {
+      "id": 36,
+      "brand_id": 2,
+      "kind": "photo",
+      "filename": "6c4e5b12dd2c3132315d.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_530150096_18050574977541659_5809299670867761338_n.jpg",
+      "bytes": 369684,
+      "sort_order": 3,
+      "created_at": "2026-09-17T16:55:35.337Z"
+    },
+    {
+      "id": 37,
+      "brand_id": 2,
+      "kind": "photo",
+      "filename": "940fd1e85693aef249c3.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_529279174_18050574992541659_971616990512906224_n.jpg",
+      "bytes": 189907,
+      "sort_order": 4,
+      "created_at": "2026-09-17T16:55:35.339Z"
+    },
+    {
+      "id": 38,
+      "brand_id": 3,
+      "kind": "photo",
+      "filename": "99aecfbf7e34353fa710.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_494631027_18040152368541659_5099777305152299366_n.jpg",
+      "bytes": 496285,
+      "sort_order": 3,
+      "created_at": "2026-09-17T16:55:50.668Z"
+    },
+    {
+      "id": 39,
+      "brand_id": 4,
+      "kind": "video",
+      "filename": "e620aa5bc5d26ecdc817.mp4",
+      "poster": null,
+      "original": "SnapInsta.to_AQPCP9JJfojLdncssKaRZ57e1qihYGPDzyrld62Be9HTt_YFPPTEcIH8iWrJjPGq9QMz4AwFGNksP0U5GwOvsuAFmHXdrvomlJ0tILM.mp4",
+      "bytes": 16843381,
+      "sort_order": 3,
+      "created_at": "2026-09-17T16:56:05.620Z"
+    },
+    {
+      "id": 40,
+      "brand_id": 8,
+      "kind": "photo",
+      "filename": "7e2fa806392f51ae1d27.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_564868593_18072124082223442_466542017765941367_n.jpg",
+      "bytes": 273977,
+      "sort_order": 2,
+      "created_at": "2026-09-17T16:56:25.527Z"
+    },
+    {
+      "id": 41,
+      "brand_id": 8,
+      "kind": "photo",
+      "filename": "c86381ab43cf7f40d659.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_564616788_18072124028223442_7085389344143265353_n.jpg",
+      "bytes": 305592,
+      "sort_order": 3,
+      "created_at": "2026-09-17T16:56:25.532Z"
+    },
+    {
+      "id": 45,
+      "brand_id": 5,
+      "kind": "photo",
+      "filename": "344b278a89f77017b59d.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_494631027_18040152368541659_5099777305152299366_n.jpg",
+      "bytes": 496285,
+      "sort_order": 4,
+      "created_at": "2026-09-17T16:56:44.091Z"
+    },
+    {
+      "id": 46,
+      "brand_id": 5,
+      "kind": "photo",
+      "filename": "bc619745de8c399caca6.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_590535780_18063101213541659_7165952930566593419_n.jpg",
+      "bytes": 647331,
+      "sort_order": 5,
+      "created_at": "2026-09-17T16:56:44.093Z"
+    },
+    {
+      "id": 50,
+      "brand_id": 1,
+      "kind": "photo",
+      "filename": "ecf9b909bfb89c8eb1fa.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_649235988_18009799925691153_7335969183461951855_n.jpg",
+      "bytes": 187819,
+      "sort_order": 0,
+      "created_at": "2026-09-17T17:09:55.362Z"
+    },
+    {
+      "id": 51,
+      "brand_id": 1,
+      "kind": "video",
+      "filename": "59d2cb676b458e6805c3.mp4",
+      "poster": null,
+      "original": "SnapInsta.to_AQMxk6XOGz7sOu3r46rX3jkkMtGPUchL-OG9ihK6f6Y_fsSDb0fQOcpCJmQ8knI8jHSU6AIjnDLJlJttFfYyq3MrFOGkftjxat05kbo.mp4",
+      "bytes": 6340651,
+      "sort_order": 1,
+      "created_at": "2026-09-17T17:10:01.072Z"
+    },
+    {
+      "id": 52,
+      "brand_id": 1,
+      "kind": "video",
+      "filename": "707c8c9bc7c9639b2c9b.mp4",
+      "poster": null,
+      "original": "SnapInsta.to_AQNref3z-MWWlDSOBYsJnVESnrBqT8Oy20XRt6rjpqQ-ZzkigUmR21WjCb_uwDvERg-UcGE11S42mMKJSdYmvq3o5bSmcF28YKkwNDU.mp4",
+      "bytes": 9134276,
+      "sort_order": 2,
+      "created_at": "2026-09-17T17:10:01.074Z"
+    },
+    {
+      "id": 53,
+      "brand_id": 1,
+      "kind": "photo",
+      "filename": "1a797a04a228c196bca5.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_653024951_18098393407772482_4039317552516951870_n.jpg",
+      "bytes": 160812,
+      "sort_order": 3,
+      "created_at": "2026-09-17T17:10:01.076Z"
+    },
+    {
+      "id": 54,
+      "brand_id": 1,
+      "kind": "photo",
+      "filename": "7ef9bc23dbf4d831a4c3.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_651457788_18114926491730229_2653046505093905352_n.jpg",
+      "bytes": 214054,
+      "sort_order": 4,
+      "created_at": "2026-09-17T17:10:01.078Z"
+    },
+    {
+      "id": 55,
+      "brand_id": 1,
+      "kind": "photo",
+      "filename": "f7f27ee5a1ffab9ebe05.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_655952223_18342344707209205_6764935874829739147_n.jpg",
+      "bytes": 118934,
+      "sort_order": 5,
+      "created_at": "2026-09-17T17:10:01.080Z"
+    },
+    {
+      "id": 56,
+      "brand_id": 7,
+      "kind": "video",
+      "filename": "8a90404dc714c1c78209.mp4",
+      "poster": null,
+      "original": "SnapInsta.to_AQOZgVsmpBTF7v7c3QjeEtNEFWnajDb0toWk2hloHyDe1JuVxAORnz_ycfzuUvZTFQHsQ3X7JSblQ7xcIuirKR5d.mp4",
+      "bytes": 655865,
+      "sort_order": 8,
+      "created_at": "2026-09-17T18:16:41.533Z"
+    },
+    {
+      "id": 57,
+      "brand_id": 7,
+      "kind": "photo",
+      "filename": "01c39b5f3d16a73a5d8c.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_623529567_18156438442421314_56603425431315558_n.jpg",
+      "bytes": 193155,
+      "sort_order": 9,
+      "created_at": "2026-09-17T18:16:41.537Z"
+    },
+    {
+      "id": 58,
+      "brand_id": 9,
+      "kind": "photo",
+      "filename": "1f3fcfd88ee51cf63c9e.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_528984598_18050575010541659_4638319894226275976_n.jpg",
+      "bytes": 517753,
+      "sort_order": 0,
+      "created_at": "2026-09-17T18:18:21.448Z"
+    },
+    {
+      "id": 59,
+      "brand_id": 9,
+      "kind": "photo",
+      "filename": "b72a13c37f3cf16d215e.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_530150096_18050574977541659_5809299670867761338_n.jpg",
+      "bytes": 369684,
+      "sort_order": 1,
+      "created_at": "2026-09-17T18:18:21.450Z"
+    },
+    {
+      "id": 60,
+      "brand_id": 9,
+      "kind": "photo",
+      "filename": "f4801577c32cdf3386c9.jpg",
+      "poster": null,
+      "original": "SnapInsta.to_529279174_18050574992541659_971616990512906224_n.jpg",
+      "bytes": 189907,
+      "sort_order": 2,
+      "created_at": "2026-09-17T18:18:21.452Z"
+    },
+    {
+      "id": 61,
+      "brand_id": 9,
+      "kind": "video",
+      "filename": "bfa67293bdbf0208f15a.mp4",
+      "poster": null,
+      "original": "SnapInsta.to_AQPCP9JJfojLdncssKaRZ57e1qihYGPDzyrld62Be9HTt_YFPPTEcIH8iWrJjPGq9QMz4AwFGNksP0U5GwOvsuAFmHXdrvomlJ0tILM.mp4",
+      "bytes": 16843381,
+      "sort_order": 3,
+      "created_at": "2026-09-17T18:18:21.454Z"
+    },
+    {
+      "id": 62,
+      "brand_id": 9,
+      "kind": "video",
+      "filename": "00b7cc4f4f089ce0df82.mp4",
+      "poster": null,
+      "original": "SnapInsta.to_AQPMU1oY8NEopFEBgchlV158x0yrYqCofwIxVNjWCwZyrdwS_vV53Wwbaa7ooWSH7ud_b9V0MiWDJ76nVb4LS9MxrhNBh8d6HiHPzoA.mp4",
+      "bytes": 9105749,
+      "sort_order": 4,
+      "created_at": "2026-09-17T18:18:21.457Z"
+    },
+    {
+      "id": 63,
+      "brand_id": 5,
+      "kind": "video",
+      "filename": "7fc57125ff847eb51668.mp4",
+      "poster": null,
+      "original": "SnapInsta.to_AQNXSYOS0sypNSHUJ9xICrEB9f0Sj-e0tNmv6E5cY1pP-2BR-NQTF1StpMOVTOtsF3TUI-JAURu095hLTCXGtPFri77Oslf6M-qxTy0.mp4",
+      "bytes": 2014301,
+      "sort_order": 4,
+      "created_at": "2026-09-17T23:47:07.134Z"
+    }
+  ]
+}

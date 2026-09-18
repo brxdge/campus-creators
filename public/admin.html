@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Media Admin — Campus Creators</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/admin.css?v=2">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="gate" id="gate">
+  <form class="gate-box" id="loginForm">
+    <img src="assets/campus-creators-logo.png" alt="Campus Creators" class="gate-logo">
+    <h1>Media admin</h1>
+    <p>Enter the passcode to manage site content.</p>
+    <input type="password" id="passcode" placeholder="Passcode" autocomplete="current-password" required>
+    <button type="submit" class="btn">Sign in</button>
+    <p class="gate-error" id="gateError"></p>
+  </form>
+</div>
+
+<!-- DASHBOARD -->
+<div class="app" id="app" hidden>
+  <header class="admin-bar">
+    <div class="admin-bar-inner">
+      <img src="assets/campus-creators-logo.png" alt="Campus Creators" class="admin-logo">
+      <div class="admin-actions">
+        <a href="/" class="btn ghost" target="_blank" rel="noopener">View site</a>
+        <button class="btn ghost" id="logoutBtn">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <div class="admin-head">
+      <h2>Brand content</h2>
+      <p>Upload photos for the homepage feed wall, and videos for the phone previews.</p>
+    </div>
+
+    <div class="add-brand">
+      <input type="text" id="newBrand" placeholder="Add a new brand…">
+      <button class="btn small" id="addBrandBtn">Add brand</button>
+    </div>
+
+    <div id="brandList" class="brand-list">
+      <p class="loading">Loading…</p>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/admin.js?v=2"></script>
+</body>
+</html>
