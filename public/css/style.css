@@ -547,8 +547,8 @@ header.nav-hidden{transform:translateY(-100%);}
    padded crop, not edge-to-edge art, so the visible glyph needs more
    room to read at the same size as before. */
 .how-star{
-  display:inline-block;width:.92em;height:.92em;margin:0 -.22em;
-  position:relative;top:-.72em;
+  display:inline-block;width:.94em;height:.82em;margin:0 -.4em;
+  position:relative;top:-.82em;
   object-fit:contain;vertical-align:baseline;
 }
 
