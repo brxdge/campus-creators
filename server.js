@@ -210,6 +210,18 @@ app.post('/api/contact', (req, res) => {
   res.status(501).json({ error: 'Contact endpoint not wired up yet.' });
 });
 
+// ---- form submissions (Brands contact + Talents apply) ---------------------
+// Stored as submissions.json next to the uploads folder, so on Railway it
+// lives on the same persistent volume (e.g. /data/submissions.json).
+// To also email each one via Resend later, add: onSubmit: (entry) => { ... }
+const DATA_DIR = process.env.DATA_DIR || path.dirname(UPLOAD_DIR);
+const submissions = require('./submissions');
+app.use(submissions({ requireAdmin, dataDir: DATA_DIR }));
+
+// ---- Campus Ambassadors (Talents page) -------------------------------------
+const roster = require('./roster');
+app.use(roster({ requireAdmin, dataDir: DATA_DIR }));
+
 // ---- static ----------------------------------------------------------------
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, filePath) => {

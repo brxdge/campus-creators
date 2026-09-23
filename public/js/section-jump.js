@@ -49,17 +49,17 @@
 
   const heroZoom = document.getElementById('heroZoom');
 
-  // 'connect' and 'services' each have their own scrub-linked entrance
-  // animation (attachExpandEntrance in hero-zoom.js). Because
-  // currentIndex() reports "arrived" as soon as the viewport's midpoint
-  // crosses into a section — which happens quickly for a one-viewport
-  // section — a plain hard-jump would fire on the very next wheel tick
-  // and skip straight past it before its animation ever gets to settle.
-  // settledScrubIdx tracks which one of these we've already "claimed" the
-  // pause for; arriving at a new one consumes exactly one scroll gesture
-  // to settle precisely at its own position, and only the next, separate
-  // gesture is allowed to advance further.
-  const scrubSectionIds = new Set(['connect', 'services']);
+  // 'services' has its own scrub-linked entrance animation
+  // (attachExpandEntrance in hero-zoom.js). Because currentIndex() reports
+  // "arrived" as soon as the viewport's midpoint crosses into a section —
+  // which happens quickly for a one-viewport section — a plain hard-jump
+  // would fire on the very next wheel tick and skip straight past it
+  // before its animation ever gets to settle. settledScrubIdx tracks
+  // whether we've already "claimed" the pause for it; arriving there
+  // consumes exactly one scroll gesture to settle precisely at its own
+  // position, and only the next, separate gesture is allowed to advance
+  // further.
+  const scrubSectionIds = new Set(['services']);
   let settledScrubIdx = -1;
 
   let isAnimating = false;
