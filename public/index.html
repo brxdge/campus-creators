@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Campus Creators — Connecting Brands to Campuses</title>
+<title>Campus Creators | Connecting Brands to Campuses</title>
 <meta name="description" content="Campus Creators connects brands to Canadian campuses through student-made content, ambassador programs, and full campus activations.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Arimo:wght@700;800&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=105">
+<link rel="stylesheet" href="css/style.css?v=121">
 </head>
 <body>
 
@@ -33,7 +33,7 @@
     <div class="nav-links" id="navLinks">
       <div class="nav-side nav-left">
         <a href="#work">Brands</a>
-        <a href="#contact">Talents</a>
+        <a href="talents.html">Talents</a>
       </div>
       <div class="nav-side nav-right">
         <a href="#contact">Contact Us</a>
@@ -45,13 +45,10 @@
 
 <main id="top">
 
-<!-- HERO ZOOM ZONE — outside fullPage, a tall scroll track that pins the hero
-     while the "SEE" zoom scrubs to scroll position, then releases to fullPage -->
-<div id="heroZoom" class="hero-zoom-zone">
-  <div class="hero-zoom-sticky">
+<div id="sections">
 
-  <!-- HERO -->
-  <section class="hero">
+<!-- HERO -->
+<section class="hero" id="hero">
     <div class="feed-wall" aria-hidden="true">
       <div class="feed-col up">
         <div class="reel t1" data-brand="HelloFresh"><span class="reel-play"></span><span class="reel-name">HelloFresh</span></div>
@@ -154,21 +151,7 @@
     </div>
     <div class="hero-scrim" aria-hidden="true"></div>
     <div class="wrap hero-inner">
-      <h1>Students <span class="hl-make">make</span> it.<span class="line2">Campuses <span class="hl-see">see</span> it.</span></h1>
-      <a href="#work" class="hero-sub-link">Explore Case Studies</a>
-      <p class="hero-note">Over 1,000 student creators across Canadian campuses.</p>
-    </div>
-  </section>
-
-  </div><!-- /hero-zoom-sticky -->
-</div><!-- /hero-zoom-zone -->
-
-<div id="sections">
-
-  <!-- CONNECT -->
-  <section class="sec sec-dark connect" id="connect">
-    <div class="wrap">
-      <h2>Connecting
+      <h1>Connecting
         <span class="swap" id="swapWordA">
           <span class="swap-track">
             <span class="swap-face">brands</span>
@@ -181,8 +164,10 @@
             <span class="swap-face">campuses</span>
             <span class="swap-face">brands</span>
           </span>
-        </span>.
-      </h2>
+        </span>
+      </h1>
+      <a href="#work" class="hero-sub-link">Explore Case Studies</a>
+      <p class="hero-note">Over 1,000 student creators across Canadian campuses.</p>
     </div>
   </section>
 
@@ -211,12 +196,12 @@
           </div>
           <span class="svc-label">Ambassadors</span>
         </button>
-        <button class="svc-card" type="button" data-title="Digital promotions" data-desc="Email, giveaways and paid — aimed only at students.">
+        <button class="svc-card" type="button" data-title="Digital promotions" data-desc="Email, giveaways and paid, aimed only at students.">
           <img class="svc-poster" alt="" loading="lazy">
           <video class="svc-video" muted loop playsinline preload="none"></video>
           <div class="svc-overlay">
             <h3>Digital promotions</h3>
-            <p>Email, giveaways and paid — aimed only at students.</p>
+            <p>Email, giveaways and paid, aimed only at students.</p>
           </div>
           <span class="svc-label">Digital promotions</span>
         </button>
@@ -353,7 +338,7 @@
               <div class="how-num"><span>4</span></div>
               <h3>You get the results</h3>
             </div>
-            <p>A wrap-up of what ran, what it reached, and which creators performed — so the next campaign starts ahead of this one.</p>
+            <p>A wrap-up of what ran, what it reached, and which creators performed, so the next campaign starts ahead of this one.</p>
           </div>
         </li>
       </ol>
@@ -396,7 +381,7 @@
     <div class="wrap about enter-fade">
       <div>
         <h2>We are the connection between brands and campuses</h2>
-        <p>The student market has always been hard to reach from the outside. Trends move fast, attention is short, and everyone is competing for it. We work inside that market rather than around it — campus activations, student-made content, and ambassador programs built for how students actually behave.</p>
+        <p>The student market has always been hard to reach from the outside. Trends move fast, attention is short, and everyone is competing for it. We work inside that market rather than around it: campus activations, student-made content, and ambassador programs built for how students actually behave.</p>
         <a href="#work" class="btn ink-line">See the work</a>
       </div>
       <div class="about-pull">
@@ -458,7 +443,7 @@
       <div class="wrap footer-top">
         <div class="footer-brand">
           <img src="assets/campus-creators-logo.png" alt="Campus Creators" class="footer-logo">
-          <p>Connecting brands to campuses across Canada — student-made content, ambassador programs, and live activations.</p>
+          <p>Connecting brands to campuses across Canada. Student-made content, ambassador programs, and live activations.</p>
         </div>
         <div class="footer-col">
           <p class="footer-col-title">Explore</p>
@@ -516,8 +501,8 @@
           <select id="budget" name="budget">
             <option value="">Select one</option>
             <option>Under $5,000</option>
-            <option>$5,000 – $15,000</option>
-            <option>$15,000 – $50,000</option>
+            <option>$5,000 to $15,000</option>
+            <option>$15,000 to $50,000</option>
             <option>$50,000+</option>
             <option>Not sure yet</option>
           </select>
@@ -527,13 +512,14 @@
           <select id="timeline" name="timeline">
             <option value="">Select one</option>
             <option>Within a month</option>
-            <option>1–3 months</option>
+            <option>1 to 3 months</option>
             <option>3+ months</option>
             <option>Still planning</option>
           </select>
         </div>
       </div>
       <div class="field full" style="margin-bottom:18px;"><label for="message">What are you launching? *</label><textarea id="message" name="message" required></textarea></div>
+      <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp-field">
       <button type="submit" class="btn ink" style="width:100%;">Send message</button>
       <p class="form-msg" id="formMsg"></p>
     </form>
@@ -541,13 +527,13 @@
 </div>
 
 <script src="js/loader.js?v=6"></script>
-<script src="js/main.js?v=50"></script>
-<script src="js/section-jump.js?v=8"></script>
+<script src="js/main.js?v=53"></script>
+<script src="js/section-jump.js?v=9"></script>
 <script src="js/about-wipe.js?v=4"></script>
-<script src="js/services-showcase.js?v=1"></script>
+<script src="js/services-showcase.js?v=2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollTrigger.min.js"></script>
-<script src="js/hero-zoom.js?v=15"></script>
-<script src="js/how-it-works.js?v=5"></script>
+<script src="js/hero-zoom.js?v=16"></script>
+<script src="js/how-it-works.js?v=6"></script>
 </body>
 </html>

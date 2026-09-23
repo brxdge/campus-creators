@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Media Admin — Campus Creators</title>
+<title>Admin | Campus Creators</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=2">
+<link rel="stylesheet" href="css/admin.css?v=5">
 </head>
 <body>
 
@@ -16,7 +16,7 @@
 <div class="gate" id="gate">
   <form class="gate-box" id="loginForm">
     <img src="assets/campus-creators-logo.png" alt="Campus Creators" class="gate-logo">
-    <h1>Media admin</h1>
+    <h1>Admin</h1>
     <p>Enter the passcode to manage site content.</p>
     <input type="password" id="passcode" placeholder="Passcode" autocomplete="current-password" required>
     <button type="submit" class="btn">Sign in</button>
@@ -26,35 +26,53 @@
 
 <!-- DASHBOARD -->
 <div class="app" id="app" hidden>
-  <header class="admin-bar">
-    <div class="admin-bar-inner">
-      <img src="assets/campus-creators-logo.png" alt="Campus Creators" class="admin-logo">
-      <div class="admin-actions">
-        <a href="/" class="btn ghost" target="_blank" rel="noopener">View site</a>
-        <button class="btn ghost" id="logoutBtn">Sign out</button>
+  <aside class="side" id="side">
+    <div class="side-brand">
+      <img src="assets/campus-creators-logo.png" alt="Campus Creators" class="side-logo">
+      <span class="side-tag">Admin</span>
+    </div>
+
+    <nav class="side-nav" id="sideNav">
+      <a href="#dashboard" data-view="dashboard"><span class="ico">&#9638;</span>Dashboard</a>
+
+      <p class="side-group">Inbox</p>
+      <a href="#inbox-brand" data-view="inbox-brand"><span class="ico">&#9993;</span>Brand enquiries<span class="badge" data-badge="brand" hidden></span></a>
+      <a href="#inbox-talent" data-view="inbox-talent"><span class="ico">&#9998;</span>Talent applications<span class="badge" data-badge="talent" hidden></span></a>
+
+      <p class="side-group">Brands page</p>
+      <a href="#brands" data-view="brands"><span class="ico">&#9733;</span>Creators in Action</a>
+      <a href="#services" data-view="services"><span class="ico">&#9635;</span>What We Do</a>
+      <a href="#how" data-view="how"><span class="ico">&#9312;</span>How It Works</a>
+      <a href="#work" data-view="work"><span class="ico">&#9636;</span>The Work</a>
+
+      <p class="side-group">Talents page</p>
+      <a href="#roster" data-view="roster"><span class="ico">&#9786;</span>Campus Ambassadors</a>
+    </nav>
+
+    <div class="side-foot">
+      <a href="/" class="side-link" target="_blank" rel="noopener">View Brands page &#8599;</a>
+      <a href="/talents.html" class="side-link" target="_blank" rel="noopener">View Talents page &#8599;</a>
+      <button class="btn ghost small" id="logoutBtn" type="button">Sign out</button>
+    </div>
+  </aside>
+  <div class="side-scrim" id="sideScrim"></div>
+
+  <main class="main">
+    <header class="main-head">
+      <button class="side-toggle" id="sideToggle" type="button" aria-label="Menu">&#9776;</button>
+      <div>
+        <p class="crumb" id="crumb">Overview</p>
+        <h2 id="viewTitle">Dashboard</h2>
+        <p class="view-desc" id="viewDesc"></p>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <main class="admin-main">
-    <div class="admin-head">
-      <h2>Brand content</h2>
-      <p>Upload photos for the homepage feed wall, and videos for the phone previews.</p>
-    </div>
-
-    <div class="add-brand">
-      <input type="text" id="newBrand" placeholder="Add a new brand…">
-      <button class="btn small" id="addBrandBtn">Add brand</button>
-    </div>
-
-    <div id="brandList" class="brand-list">
-      <p class="loading">Loading…</p>
-    </div>
+    <div id="view" class="view"><p class="loading">Loading…</p></div>
   </main>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<script src="js/admin.js?v=2"></script>
+<script src="js/admin.js?v=5"></script>
 </body>
 </html>
