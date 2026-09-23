@@ -62,7 +62,7 @@
     },
     roster: {
       title: 'Campus Ambassadors', crumb: 'Talents page',
-      desc: 'One photo or video per creator card. Videos play on hover; a photo in the same slot is used as the cover.',
+      desc: 'Add, edit or remove ambassadors, and give each one a photo or video. Videos play on hover; a photo in the same card is used as the cover. 12 fits best on phones (3 \u00d7 4 grid).',
       ratio: '4/5',
       slots: [
         ['slot-roster-1', 'Maya R.'], ['slot-roster-2', 'Devon K.'], ['slot-roster-3', 'Priya S.'],
@@ -96,6 +96,7 @@
   let inboxQuery = '';
 
   let brands = [];
+  let ambassadors = null;       // null = roster not available on the server
   let current = 'dashboard';
 
   // ---------- helpers ----------
@@ -210,10 +211,20 @@
     });
   }
 
+  async function loadRoster() {
+    try {
+      const data = await api('/api/admin/roster');
+      ambassadors = data.ambassadors || [];
+      GROUPS.roster.slots = ambassadors.map((p) => ['slot-roster-' + p.id, p.name]);
+    } catch (e) {
+      ambassadors = null;
+    }
+  }
+
   async function load() {
     view.innerHTML = '<p class="loading">Loading…</p>';
     try {
-      const [data] = await Promise.all([api('/api/admin/brands'), loadSubmissions()]);
+      const [data] = await Promise.all([api('/api/admin/brands'), loadSubmissions(), loadRoster()]);
       brands = data.brands || [];
       render();
     } catch (err) {
@@ -227,6 +238,7 @@
     if (current === 'dashboard') renderDashboard();
     else if (current === 'brands') renderBrands();
     else if (VIEWS[current].inbox) renderInbox(VIEWS[current].inbox);
+    else if (current === 'roster' && ambassadors) renderRoster();
     else renderSlots(GROUPS[current]);
   }
 
@@ -537,6 +549,98 @@
     if (badge === 'in use' || badge === 'cover') item.classList.add('in-use');
     item.title = badge === 'cover' ? 'Used as the video cover' : badge === 'in use' ? 'Shown on the site' : 'Not currently shown';
     return item;
+  }
+
+  // ---------- Campus Ambassadors: add / edit / delete ----------
+  function ambForm(values, submitLabel, onSubmit, onCancel) {
+    const f = el('form', 'amb-form');
+    f.innerHTML = `
+      <input type="text" name="name" placeholder="Name (e.g. Maya R.)" maxlength="60" required>
+      <input type="text" name="focus" placeholder="Focus (e.g. Lifestyle)" maxlength="40">
+      <input type="text" name="school" placeholder="School (e.g. UofT)" maxlength="60">
+      <div class="amb-form-actions">
+        <button class="btn small" type="submit"></button>
+        <button class="btn ghost small" type="button" data-cancel>Cancel</button>
+      </div>`;
+    ['name', 'focus', 'school'].forEach((k) => { f.elements[k].value = values[k] || ''; });
+    f.querySelector('[type=submit]').textContent = submitLabel;
+    f.querySelector('[data-cancel]').addEventListener('click', onCancel);
+    f.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = { name: f.elements.name.value.trim(), focus: f.elements.focus.value.trim(), school: f.elements.school.value.trim() };
+      if (!data.name) return;
+      onSubmit(data);
+    });
+    return f;
+  }
+
+  function renderRoster() {
+    const bar = el('div', 'amb-bar');
+    bar.innerHTML = `<button class="btn small" type="button">+ Add ambassador</button>
+      <span class="amb-count">${ambassadors.length} ambassador${ambassadors.length === 1 ? '' : 's'}</span>`;
+    const addBtn = bar.querySelector('button');
+    view.appendChild(bar);
+
+    const addWrap = el('div', 'amb-add');
+    addWrap.hidden = true;
+    addWrap.appendChild(ambForm({}, 'Add ambassador', async (data) => {
+      try {
+        await api('/api/admin/roster', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        toast(`${data.name} added. Upload their photo or video below.`);
+        load();
+      } catch (err) { toast(err.message, true); }
+    }, () => { addWrap.hidden = true; }));
+    addBtn.addEventListener('click', () => {
+      addWrap.hidden = !addWrap.hidden;
+      if (!addWrap.hidden) addWrap.querySelector('input').focus();
+    });
+    view.appendChild(addWrap);
+
+    if (!ambassadors.length) {
+      view.appendChild(el('p', 'empty', 'No ambassadors yet. Add one above.'));
+      return;
+    }
+
+    const grid = el('div', 'slot-grid');
+    ambassadors.forEach((p, i) => {
+      const card = slotCard('slot-roster-' + p.id, p.name, i, GROUPS.roster.ratio);
+      const meta = card.querySelector('.slot-meta');
+      const sub = el('p', 'amb-sub');
+      sub.textContent = [p.focus, p.school].filter(Boolean).join(' \u00b7 ') || 'No focus or school yet';
+      meta.after(sub);
+
+      const actions = el('div', 'amb-actions');
+      actions.innerHTML = '<button class="btn ghost small" type="button" data-edit>Edit</button>' +
+        '<button class="amb-del" type="button" data-del>Delete</button>';
+      sub.after(actions);
+
+      actions.querySelector('[data-edit]').addEventListener('click', () => {
+        actions.hidden = true;
+        const form = ambForm(p, 'Save', async (data) => {
+          try {
+            await api('/api/admin/roster/' + p.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            toast('Saved.');
+            load();
+          } catch (err) { toast(err.message, true); }
+        }, () => { form.remove(); actions.hidden = false; });
+        actions.after(form);
+        form.querySelector('input').focus();
+      });
+
+      actions.querySelector('[data-del]').addEventListener('click', async () => {
+        if (!confirm(`Delete ${p.name} and their uploaded media? This cannot be undone.`)) return;
+        try {
+          await api('/api/admin/roster/' + p.id, { method: 'DELETE' });
+          const slot = brandByName('slot-roster-' + p.id);
+          if (slot) await api('/api/admin/brands/' + slot.id, { method: 'DELETE' }).catch(() => {});
+          toast(`${p.name} deleted.`);
+          load();
+        } catch (err) { toast(err.message, true); }
+      });
+
+      grid.appendChild(card);
+    });
+    view.appendChild(grid);
   }
 
   // ---------- placeholder slots ----------

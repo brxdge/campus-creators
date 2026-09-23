@@ -53,185 +53,7 @@ if ('IntersectionObserver' in window && revealEls.length) {
   revealEls.forEach((el) => el.classList.add('in-view'));
 }
 
-// ---- "The Work" spotlight carousel ----
-// Same real copy as before (three cases, all "In progress" — nothing
-// fabricated here), just presented one at a time as a bigger auto-
-// advancing feature instead of a small manually-scrolled row.
-const WORK_CASES = [
-  { flag: 'In progress', title: 'Beverage launch', desc: 'Write-up and results coming soon.' },
-  { flag: 'In progress', title: 'Ambassador program', desc: 'Write-up and results coming soon.' },
-  { flag: 'In progress', title: 'Campus activation', desc: 'Write-up and results coming soon.' },
-];
-
-(function workScroller() {
-  const workSection = document.getElementById('work');
-  const wrap = document.querySelector('.work-scroller-wrap');
-  const scroller = document.getElementById('workScroller');
-  const prevBtn = document.getElementById('workPrev');
-  const nextBtn = document.getElementById('workNext');
-  const dotsEl = document.getElementById('workDots');
-  if (!workSection || !wrap || !scroller || !prevBtn || !nextBtn || !dotsEl) return;
-
-  // computed locally rather than relying on the shared prefersReducedMotion
-  // further down the file — this IIFE runs immediately, before that const
-  // further down has been initialized
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const TONES = [1, 3, 5];
-  const AUTO_MS = 4200;
-  let timer = null;
-  let rafId = null;
-
-  // build the slides once — real slide elements, not re-rendered text, so
-  // native scroll-snap and the browser's own scroll physics do the work
-  const slideEls = WORK_CASES.map((item, i) => {
-    const li = document.createElement('li');
-    li.className = 'work-slide';
-    li.tabIndex = 0;
-
-    const cover = document.createElement('div');
-    cover.className = 'work-cover t' + TONES[i % TONES.length];
-    const num = document.createElement('span');
-    num.className = 'work-cover-num';
-    num.textContent = String(i + 1).padStart(2, '0');
-    cover.appendChild(num);
-
-    const info = document.createElement('div');
-    info.className = 'work-info';
-    const flag = document.createElement('span');
-    flag.className = 'case-flag';
-    flag.textContent = item.flag;
-    const h3 = document.createElement('h3');
-    h3.textContent = item.title;
-    const p = document.createElement('p');
-    p.textContent = item.desc;
-    info.append(flag, h3, p);
-
-    li.append(cover, info);
-    li.addEventListener('click', () => goTo(i, true));
-    scroller.appendChild(li);
-    return li;
-  });
-
-  const dotEls = WORK_CASES.map((_, i) => {
-    const dot = document.createElement('button');
-    dot.type = 'button';
-    dot.className = 'work-dot';
-    dot.setAttribute('aria-label', 'Show case ' + (i + 1) + ' of ' + WORK_CASES.length);
-    dot.addEventListener('click', () => goTo(i, true));
-    dotsEl.appendChild(dot);
-    return dot;
-  });
-
-  function nearestIndex() {
-    const center = scroller.scrollLeft + scroller.clientWidth / 2;
-    let best = 0;
-    let bestDist = Infinity;
-    slideEls.forEach((el, i) => {
-      const mid = el.offsetLeft + el.offsetWidth / 2;
-      const dist = Math.abs(mid - center);
-      if (dist < bestDist) { bestDist = dist; best = i; }
-    });
-    return best;
-  }
-
-  // literal colors, not gradient strings — --work-glow is a registered
-  // <color> custom property (see CSS), which is what lets the transition
-  // actually interpolate between them instead of snapping
-  const GLOW_BY_TONE = { 1: '#2E2E33', 2: '#3E2A20', 3: '#223140', 4: '#3A3020', 5: '#4A1D14' };
-
-  // reflects which slide is actually centred right now — driven by real
-  // scroll position, so it stays correct whether you dragged, used the
-  // arrows, or auto-advance moved it. Also shifts the section's own
-  // background to that slide's tone, the same "background follows the
-  // active item" idea as the referenced pen — there it was a real photo
-  // per item; here it's the same tone each cover placeholder already
-  // uses, so the two stay visually tied together.
-  function syncActive() {
-    const i = nearestIndex();
-    slideEls.forEach((el, idx) => el.classList.toggle('is-active', idx === i));
-    dotEls.forEach((d, idx) => d.classList.toggle('active', idx === i));
-    workSection.style.setProperty('--work-glow', GLOW_BY_TONE[TONES[i % TONES.length]]);
-  }
-
-  function onScroll() {
-    if (rafId) return;
-    rafId = requestAnimationFrame(() => {
-      rafId = null;
-      syncActive();
-    });
-  }
-  scroller.addEventListener('scroll', onScroll, { passive: true });
-
-  function goTo(i, manual) {
-    const len = slideEls.length;
-    const target = slideEls[((i % len) + len) % len];
-    scroller.scrollTo({
-      left: target.offsetLeft + target.offsetWidth / 2 - scroller.clientWidth / 2,
-      behavior: reduceMotion ? 'auto' : 'smooth',
-    });
-    if (manual) restartAuto();
-  }
-  function next() { goTo(nearestIndex() + 1, true); }
-  function prev() { goTo(nearestIndex() - 1, true); }
-
-  // instant, no easing, no auto-restart — purely for keeping the current
-  // slide correctly centred when the layout itself changes underneath it
-  function recenter() {
-    const i = nearestIndex();
-    const target = slideEls[i];
-    scroller.scrollTo({
-      left: target.offsetLeft + target.offsetWidth / 2 - scroller.clientWidth / 2,
-      behavior: 'auto',
-    });
-  }
-
-  function stopAuto() {
-    clearInterval(timer);
-    timer = null;
-  }
-  function startAuto() {
-    stopAuto();
-    if (reduceMotion || slideEls.length < 2 || document.hidden) return;
-    timer = setInterval(() => goTo(nearestIndex() + 1, false), AUTO_MS);
-  }
-  function restartAuto() { startAuto(); }
-
-  prevBtn.addEventListener('click', prev);
-  nextBtn.addEventListener('click', next);
-  wrap.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
-    else if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
-  });
-  // pause for as long as someone's actually engaging with it — mouse,
-  // touch/drag, or keyboard focus — same as the Clients showcase
-  wrap.addEventListener('mouseenter', stopAuto);
-  wrap.addEventListener('mouseleave', startAuto);
-  wrap.addEventListener('touchstart', stopAuto, { passive: true });
-  wrap.addEventListener('touchend', startAuto, { passive: true });
-  wrap.addEventListener('focusin', stopAuto);
-  wrap.addEventListener('focusout', startAuto);
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) stopAuto(); else startAuto();
-  });
-
-  // start centred on the first slide, then begin auto-advancing
-  goTo(0, false);
-  syncActive();
-  startAuto();
-
-  // --slide's width is viewport-relative (clamp with vw), and changes
-  // again at the 760px breakpoint — recentre instantly so the active
-  // slide doesn't drift off-centre as the layout reflows. Also recentre
-  // once webfonts swap in, since that can shift measured widths slightly.
-  let resizeTimer = null;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(recenter, 120);
-  });
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(recenter);
-  }
-})();
+// ---- "The Work" lives in work-showcase.js ----
 
 // ---- media source: loaded from the admin portal API ----
 let MEDIA_DATA = {};
@@ -392,7 +214,6 @@ fetch('/api/media', { headers: { Accept: 'application/json' } })
         (k.indexOf('slot-') === 0 ? SLOT_MEDIA : MEDIA_DATA)[k] = data.media[k];
       });
       MEDIA_BASE = data.path || '/media/';
-      hydrateWorkCovers();
       hydrateHeroMedia();
       // hand the full clip list to the spotlight, including videos that
       // never made it into the wall
@@ -678,16 +499,19 @@ const spotlight = (function () {
     return width;
   }
 
-  function lockWidths() {
+  // Each slot is sized to the word it's currently showing (not the longer
+  // of the two), and the width animates between them in CSS, so the
+  // sentence closes up smoothly instead of leaving a gap after "to".
+  function fitWidths() {
     slots.forEach((slot) => {
       const faces = slot.querySelectorAll('.swap-face');
-      let max = 0;
-      faces.forEach((f) => { max = Math.max(max, measureWordWidth(f)); });
-      slot.style.width = Math.ceil(max) + 'px';
+      const face = faces[slot.classList.contains('flipped') ? 1 : 0] || faces[0];
+      slot.style.width = Math.ceil(measureWordWidth(face)) + 'px';
     });
   }
-  lockWidths();
-  window.addEventListener('resize', lockWidths);
+  fitWidths();
+  window.addEventListener('resize', fitWidths);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitWidths);
 
   if (prefersReducedMotion) return;   // static text, no continuous motion
 
@@ -696,6 +520,7 @@ const spotlight = (function () {
     if (timer) return;
     timer = setInterval(() => {
       slots.forEach((slot) => slot.classList.toggle('flipped'));
+      fitWidths();
     }, 3000);
   }
   function stop() {
@@ -941,6 +766,12 @@ if (clientsSection && brandPanel && showcaseTrack && clientTabsEl) {
 
     screen.insertAdjacentHTML('beforeend',
       '<span class="phone-notch"></span>' +
+      '<span class="phone-status" aria-hidden="true"><span class="ps-time">9:41</span><span class="ps-icons">' +
+        '<svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></svg>' +
+        '<svg viewBox="0 0 16 12"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.5l1.4-1.5C13.6 1.2 10.9 0 8 0S2.4 1.2.4 3.2l1.4 1.5C3.4 3.1 5.6 2.2 8 2.2zm0 4c1.3 0 2.5.5 3.4 1.3l1.4-1.5C11.5 4.8 9.8 4 8 4s-3.5.8-4.8 2l1.4 1.5C5.5 6.7 6.7 6.2 8 6.2zM8 12l2.2-2.3C9.6 9.2 8.8 9 8 9s-1.6.2-2.2.7z"/></svg>' +
+        '<svg class="ps-batt" viewBox="0 0 27 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="#fff" stroke-opacity=".45"/><rect x="2" y="2" width="16" height="8" rx="1.8"/><rect x="24" y="4" width="2" height="4" rx=".8" fill-opacity=".45"/></svg>' +
+      '</span></span>' +
+      '<span class="phone-home" aria-hidden="true"></span>' +
       (screen.classList.contains('has-media') ? '' : '<span class="phone-play"></span>'));
 
     phone.appendChild(screen);
@@ -1208,6 +1039,7 @@ if (navLinks) {
   const openers = [
     document.getElementById('openContactModal'),
     document.getElementById('openContactModalFooter'),
+    document.getElementById('openContactModalHero'),
   ].filter(Boolean);
   if (!modal || !openers.length) return;
 
@@ -1263,30 +1095,5 @@ if (form && formMsg) {
       formMsg.classList.add('show');
       if (btn) btn.disabled = false;
     }
-  });
-}
-
-// ---- The Work: attach admin-uploaded media to each case-study cover ----
-function hydrateWorkCovers() {
-  document.querySelectorAll('#workScroller .work-cover').forEach((cover, i) => {
-    cover.querySelectorAll('.work-cover-media').forEach((n) => n.remove());
-    cover.classList.remove('has-media');
-    const s = slotPick('slot-work-' + (i + 1));
-    if (!s.video && !s.poster) return;
-    let el;
-    if (s.video) {
-      el = document.createElement('video');
-      el.src = s.video;
-      if (s.poster) el.poster = s.poster;
-      el.muted = true; el.loop = true; el.autoplay = true; el.playsInline = true;
-      el.setAttribute('playsinline', '');
-      el.disablePictureInPicture = true; el.disableRemotePlayback = true;
-    } else {
-      el = document.createElement('img');
-      el.src = s.poster; el.alt = ''; el.loading = 'lazy';
-    }
-    el.className = 'work-cover-media';
-    cover.prepend(el);
-    cover.classList.add('has-media');
   });
 }

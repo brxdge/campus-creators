@@ -135,20 +135,23 @@
   }
 
   // ---------- roster grid ----------
-  const ROSTER = [
-    { name: 'Maya R.', tag: 'Lifestyle · UofT', tone: 1 },
-    { name: 'Devon K.', tag: 'Fitness · TMU', tone: 2 },
-    { name: 'Priya S.', tag: 'Food · Waterloo', tone: 3 },
-    { name: 'Liam O.', tag: 'Tech · UBC', tone: 4 },
-    { name: 'Chloe M.', tag: 'Fashion · McGill', tone: 5 },
-    { name: 'Andre P.', tag: 'Sports · Western', tone: 1 },
-    { name: 'Sofia L.', tag: 'Beauty · Queen\u2019s', tone: 2 },
-    { name: 'Noah T.', tag: 'Film · Concordia', tone: 3 },
-    { name: 'Aisha B.', tag: 'Wellness · York', tone: 4 },
-    { name: 'Ethan W.', tag: 'Gaming · McMaster', tone: 5 },
-    { name: 'Zara H.', tag: 'Art · SFU', tone: 1 },
-    { name: 'Marcus D.', tag: 'Music · UCalgary', tone: 2 },
-  ];
+  // Fallback list, used only if /api/roster can't be reached. The live list
+  // is managed in the admin (Campus Ambassadors) and loaded below.
+  let ROSTER = [
+    ['Maya R.', 'Lifestyle', 'UofT'], ['Devon K.', 'Fitness', 'TMU'], ['Priya S.', 'Food', 'Waterloo'],
+    ['Liam O.', 'Tech', 'UBC'], ['Chloe M.', 'Fashion', 'McGill'], ['Andre P.', 'Sports', 'Western'],
+    ['Sofia L.', 'Beauty', 'Queen\u2019s'], ['Noah T.', 'Film', 'Concordia'], ['Aisha B.', 'Wellness', 'York'],
+    ['Ethan W.', 'Gaming', 'McMaster'], ['Zara H.', 'Art', 'SFU'], ['Marcus D.', 'Music', 'UCalgary'],
+  ].map(([name, focus, school], i) => ({ id: i + 1, name, focus, school }));
+
+  function loadRoster() {
+    fetch('/api/roster', { headers: { Accept: 'application/json' } })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => {
+        if (data && Array.isArray(data.ambassadors)) { ROSTER = data.ambassadors; buildRoster(); }
+      })
+      .catch(() => { /* keep the fallback list */ });
+  }
 
   function buildRoster() {
     const grid = document.getElementById('talRoster');
@@ -156,7 +159,12 @@
     const { photos, videos } = collectMedia();
     grid.innerHTML = '';
 
+    grid.style.setProperty('--rows', Math.max(1, Math.ceil(ROSTER.length / 3)));
     ROSTER.forEach((person, i) => {
+      person = Object.assign({}, person, {
+        tone: (i % 5) + 1,
+        tag: [person.focus, person.school].filter(Boolean).join(' \u00b7 '),
+      });
       const card = document.createElement('article');
       card.className = 'tal-card';
 
@@ -166,7 +174,7 @@
       // prefer a real video (hover-to-play), else a real photo, else the
       // tinted gradient placeholder the CSS already draws
       // admin-assigned media for this roster card wins over the shared pool
-      const own = typeof slotPick === 'function' ? slotPick('slot-roster-' + (i + 1)) : null;
+      const own = typeof slotPick === 'function' ? slotPick('slot-roster-' + person.id) : null;
       const hasOwn = own && (own.video || own.poster);
       const clip = hasOwn ? (own.video ? { src: own.video, poster: own.poster } : null)
         : (videos.length ? videos[i % videos.length] : null);
@@ -442,6 +450,7 @@
   function boot() {
     startHeroVideoCycle();
     buildRoster();
+    loadRoster();
     setupReveal();
     setupApplyModal();
     setupApplyForm();
