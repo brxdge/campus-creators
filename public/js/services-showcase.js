@@ -43,17 +43,38 @@
     return '';
   }
 
+  function slug(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+
   function assignMedia() {
+    if (typeof resolveMedia !== 'function') return;
     const pool = collectVideoPool();
-    if (!pool.length || typeof resolveMedia !== 'function') return;
     const photoPool = collectPhotoPool();
 
     cards.forEach((card, i) => {
-      const clip = pool[i % pool.length];   // cycle if fewer real clips than cards
       const poster = card.querySelector('.svc-poster');
       const video = card.querySelector('.svc-video');
       if (!poster || !video) return;
 
+      // admin-assigned media for this service wins over the shared pool
+      const own = typeof slotPick === 'function' ? slotPick('slot-svc-' + slug(card.dataset.title)) : null;
+      if (own && (own.video || own.poster)) {
+        if (own.poster) poster.src = own.poster;
+        if (own.video) {
+          video.style.display = '';
+          video.src = own.video;
+        } else {
+          video.pause();
+          video.removeAttribute('src');
+          video.style.display = 'none';
+        }
+        video.disablePictureInPicture = true;
+        video.disableRemotePlayback = true;
+        return;
+      }
+
+      if (!pool.length) return;
+      const clip = pool[i % pool.length];   // cycle if fewer real clips than cards
+      video.style.display = '';
       const posterSrc = clip.poster || fallbackPoster(clip.brand, photoPool);
       if (posterSrc) poster.src = resolveMedia(posterSrc);
       video.src = resolveMedia(clip.src);

@@ -236,6 +236,23 @@ const WORK_CASES = [
 // ---- media source: loaded from the admin portal API ----
 let MEDIA_DATA = {};
 let MEDIA_BASE = '/media/';
+// Placeholder-specific uploads from the admin dashboard (What We Do, How it
+// works, The Work, Talent roster). Stored server-side as "brands" whose
+// names start with "slot-", and split out of MEDIA_DATA on load so they
+// never leak into the brand feed wall / carousels.
+let SLOT_MEDIA = {};
+
+// Returns resolved URLs for one placeholder slot: its first video (with a
+// photo from the same slot as poster), or its first photo on its own.
+function slotPick(key) {
+  const e = SLOT_MEDIA[key] || {};
+  const v = (e.videos || []).find((x) => x && x.src);
+  const p = (e.photos || []).find(Boolean);
+  return {
+    video: v ? resolveMedia(v.src) : '',
+    poster: v && v.poster ? resolveMedia(v.poster) : (p ? resolveMedia(p) : ''),
+  };
+}
 
 function resolveMedia(entry) {
   if (!entry) return '';
@@ -369,8 +386,13 @@ fetch('/api/media', { headers: { Accept: 'application/json' } })
   .then((r) => (r.ok ? r.json() : Promise.reject()))
   .then((data) => {
     if (data && data.media) {
-      MEDIA_DATA = data.media;
+      MEDIA_DATA = {};
+      SLOT_MEDIA = {};
+      Object.keys(data.media).forEach((k) => {
+        (k.indexOf('slot-') === 0 ? SLOT_MEDIA : MEDIA_DATA)[k] = data.media[k];
+      });
       MEDIA_BASE = data.path || '/media/';
+      hydrateWorkCovers();
       hydrateHeroMedia();
       // hand the full clip list to the spotlight, including videos that
       // never made it into the wall
@@ -407,19 +429,20 @@ const spotlight = (function () {
   let activePanel = null;     // the panel currently on screen, if any
   let closeTimers = [];       // its pending timeouts, so they can be cancelled
 
-  // The hero-zoom system (js/hero-zoom.js, built on GSAP ScrollTrigger)
-  // fires these based on the zoom's own playhead: 'heroZoomDone' the moment
-  // it starts engaging, 'heroZoomReturn' when it's fully back at rest.
-  // The spotlight must be off during the whole zoom — it's a fixed-position
-  // panel, so if it fired mid-animation it would sit on top of the zooming
-  // hero and disrupt it.
-  document.addEventListener('heroZoomDone', () => {
-    heroVisible = false;
-    closeActivePanel();      // don't wait for the hold timer — stop right now
-  });
-  document.addEventListener('heroZoomReturn', () => {
-    heroVisible = true;
-  });
+  // The spotlight is a fixed-position panel, so it has to be told explicitly
+  // when the hero has scrolled out of view — geometry doesn't stop it on its
+  // own. Watches the hero directly and closes the panel the moment it's
+  // mostly scrolled away, instead of waiting for its hold timer to run out;
+  // it comes back once the hero is mostly back on screen.
+  if (hero && 'IntersectionObserver' in window) {
+    new IntersectionObserver(
+      (entries) => {
+        heroVisible = entries[0].isIntersecting;
+        if (!heroVisible) closeActivePanel();
+      },
+      { threshold: 0.6 }
+    ).observe(hero);
+  }
 
   // The feed-wall videos fade out via opacity during the zoom, but opacity
   // doesn't pause decoding — up to 3 videos kept playing fully invisible for
@@ -626,9 +649,9 @@ const spotlight = (function () {
   return { rebuild };
 })();
 
-// ---- Connect section: "brands" / "campuses" rolling word-swap ----
+// ---- Hero: "brands" / "campuses" rolling word-swap ----
 (function swapWords() {
-  const slots = document.querySelectorAll('#connect .swap');
+  const slots = document.querySelectorAll('#hero .swap');
   if (!slots.length) return;
 
   // The two words are different lengths ("brands" vs "campuses") — lock
@@ -682,7 +705,7 @@ const spotlight = (function () {
 
   // only run the loop while the section is actually visible — no point
   // animating something nobody can see
-  const section = document.getElementById('connect');
+  const section = document.getElementById('hero');
   if (section && 'IntersectionObserver' in window) {
     new IntersectionObserver(
       (entries) => { entries[0].isIntersecting ? start() : stop(); },
@@ -691,6 +714,23 @@ const spotlight = (function () {
   } else {
     start();
   }
+})();
+
+// ---- Brands ("The work"): text intro ----
+// Same idea as the Talents page's own scroll reveal (talents.js) — the
+// class is toggled on the section itself every time it crosses into or
+// out of view, never just added once, so the heading, the intro line, and
+// each case's text fade back in on every pass, scrolling down into the
+// section or back up into it.
+(function workTextIntro() {
+  const section = document.getElementById('work');
+  if (!section || !('IntersectionObserver' in window) || prefersReducedMotion) return;
+
+  const io = new IntersectionObserver(
+    (entries) => { section.classList.toggle('in-view', entries[0].isIntersecting); },
+    { threshold: 0.35 }
+  );
+  io.observe(section);
 })();
 
 // ---- Campus Activations: expands once, permanently, when centred ----
@@ -1193,14 +1233,60 @@ if (navLinks) {
   });
 })();
 
-// ---- contact form (front-end only for now — not wired to email yet) ----
+// ---- contact form: saved on the server, viewable in the admin inbox ----
 const form = document.getElementById('contactForm');
 const formMsg = document.getElementById('formMsg');
 if (form && formMsg) {
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    formMsg.textContent = "Thanks — this form isn't connected to email yet, so nothing was sent. Once the backend is wired up this will reach the team directly.";
-    formMsg.style.color = '#3B4B63';
-    formMsg.classList.add('show');
+    const btn = form.querySelector('[type=submit]');
+    const fields = {};
+    new FormData(form).forEach((v, k) => { if (k !== 'website') fields[k] = v; });
+    const honeypot = form.querySelector('[name=website]');
+    if (btn) btn.disabled = true;
+    formMsg.classList.remove('show');
+    try {
+      const res = await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'brand', website: honeypot ? honeypot.value : '', fields }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+      form.reset();
+      formMsg.textContent = 'Thanks! We got your message and will be in touch soon.';
+      formMsg.style.color = '#3B4B63';
+    } catch (err) {
+      formMsg.textContent = err.message && err.message.indexOf('fetch') === -1 ? err.message : 'Could not send right now. Please try again.';
+      formMsg.style.color = '#C0321A';
+    } finally {
+      formMsg.classList.add('show');
+      if (btn) btn.disabled = false;
+    }
+  });
+}
+
+// ---- The Work: attach admin-uploaded media to each case-study cover ----
+function hydrateWorkCovers() {
+  document.querySelectorAll('#workScroller .work-cover').forEach((cover, i) => {
+    cover.querySelectorAll('.work-cover-media').forEach((n) => n.remove());
+    cover.classList.remove('has-media');
+    const s = slotPick('slot-work-' + (i + 1));
+    if (!s.video && !s.poster) return;
+    let el;
+    if (s.video) {
+      el = document.createElement('video');
+      el.src = s.video;
+      if (s.poster) el.poster = s.poster;
+      el.muted = true; el.loop = true; el.autoplay = true; el.playsInline = true;
+      el.setAttribute('playsinline', '');
+      el.disablePictureInPicture = true; el.disableRemotePlayback = true;
+    } else {
+      el = document.createElement('img');
+      el.src = s.poster; el.alt = ''; el.loading = 'lazy';
+    }
+    el.className = 'work-cover-media';
+    cover.prepend(el);
+    cover.classList.add('has-media');
   });
 }
