@@ -2561,7 +2561,7 @@ body.brands-body{background:#000;}
 /* calmer wall: no repeated brand captions, slightly dimmer, so the
    footage reads as proof and the headline leads */
 .hero .reel-name{display:none;}
-.hero .feed-wall{filter:saturate(.9) brightness(.82);}
+.hero .feed-wall{filter:none;}
 
 /* trusted-by strip along the bottom of the hero */
 .hero{padding-bottom:clamp(110px,15vh,150px);}
@@ -2614,3 +2614,59 @@ body.brands-body{background:#000;}
 .tal-closer .site-footer{text-align:left;align-self:center;}
 .tal-closer-stars{z-index:0;}
 .tal-closer-main > .wrap{position:relative;z-index:1;}
+
+
+/* ============================================================
+   PERFORMANCE PASS
+   ============================================================ */
+/* anything in an off-screen section stops animating (resumes in place) */
+.is-offscreen,.is-offscreen *,.is-offscreen *::before,.is-offscreen *::after{animation-play-state:paused !important;}
+/* keep the drifting feed-wall columns on their own GPU layers */
+.feed-col{will-change:transform;}
+/* backdrop blurs re-render every frame over moving content: swap them for
+   flat translucent fills that look the same at this size */
+.reel-play,.phone-play{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(0,0,0,.35);}
+.svc-live,.wk-case-tag{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(0,0,0,.6);}
+.brands-body .sticky-cta{backdrop-filter:none;-webkit-backdrop-filter:none;}
+/* What We Do + How It Works entrances (replaces the GSAP versions) */
+#services.svc-ready .svc-layout{opacity:0;transform:translateY(28px);transition:opacity .9s cubic-bezier(.22,1,.36,1),transform .9s cubic-bezier(.22,1,.36,1);}
+#services.svc-ready.svc-in .svc-layout{opacity:1;transform:none;}
+#process.how-ready .how-step{opacity:0;translate:0 22px;transition:opacity .5s ease,translate .5s cubic-bezier(.22,1,.36,1);}
+#process.how-ready.how-in .how-step{opacity:1;translate:0 0;}
+#process.how-ready .how-step:nth-child(2){transition-delay:.12s;}
+#process.how-ready .how-step:nth-child(3){transition-delay:.24s;}
+#process.how-ready .how-step:nth-child(4){transition-delay:.36s;}
+@media (prefers-reduced-motion: reduce){
+  #services.svc-ready .svc-layout,#process.how-ready .how-step{opacity:1;transform:none;translate:0 0;transition:none;}
+}
+
+
+/* ============================================================
+   PERFORMANCE PASS (Brands page)
+   ============================================================ */
+/* 1. motion in off-screen sections is paused (class set in main.js) */
+.is-offscreen *,.is-offscreen *::before,.is-offscreen *::after,
+.is-offscreen::before,.is-offscreen::after{animation-play-state:paused !important;}
+
+/* 2. hero: darken the wall with a static overlay instead of a filter on the
+   moving wall (a filter there re-rasterises the whole wall every frame) */
+.brands-body .hero-scrim::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.16);}
+.feed-col{will-change:transform;backface-visibility:hidden;}
+.reel{contain:paint;}
+
+/* 3. contact backdrop: blur a quarter-size copy of the video and scale it
+   up. Looks the same (it's heavily blurred anyway) but the GPU blurs
+   ~16x fewer pixels per frame. */
+.contact-video{
+  /* the clip itself stays invisible — it only feeds the tiny canvas below */
+  inset:auto;left:0;top:0;width:2px;height:2px;opacity:0;filter:none;transform:none;pointer-events:none;
+}
+.contact-canvas{
+  position:absolute;left:-6%;top:-6%;width:112%;height:112%;z-index:0;
+  object-fit:cover;opacity:0;transition:opacity .8s ease;image-rendering:auto;
+}
+.contact-canvas.ready{opacity:1;}
+
+/* 4. keep big decorative layers on their own compositor layer */
+#services.svc-sec::before,.svc-bgword{will-change:transform;}
+.svc-frame{will-change:transform;}
