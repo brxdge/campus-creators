@@ -26,14 +26,32 @@ module.exports = function roster(opts = {}) {
 
   fs.mkdirSync(dataDir, { recursive: true });
 
-  function readAll() {
-    try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
-    catch (e) { writeAll(SEED); return SEED.slice(); }
+  // Stored as { nextId, ambassadors }. nextId only ever goes up, so a
+  // deleted ambassador's id (and its media slot) is never handed to someone
+  // new. Older files that were a plain array are upgraded on read.
+  function readStore() {
+    try {
+      const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+      const list = Array.isArray(raw) ? raw : (raw.ambassadors || []);
+      const maxId = list.reduce((m, a) => Math.max(m, a.id), 0);
+      const nextId = Math.max(Array.isArray(raw) ? 0 : (raw.nextId || 0), maxId + 1, SEED.length + 1);
+      return { nextId, ambassadors: list };
+    } catch (e) {
+      const store = { nextId: SEED.length + 1, ambassadors: SEED.slice() };
+      writeStore(store);
+      return store;
+    }
   }
-  function writeAll(list) {
+  function writeStore(store) {
     const tmp = file + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(list, null, 2));
+    fs.writeFileSync(tmp, JSON.stringify(store, null, 2));
     fs.renameSync(tmp, file);
+  }
+  const readAll = () => readStore().ambassadors;
+  function writeAll(list) {
+    const store = readStore();
+    store.ambassadors = list;
+    writeStore(store);
   }
   function clean(body) {
     const s = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
@@ -55,10 +73,11 @@ module.exports = function roster(opts = {}) {
   router.post('/api/admin/roster', requireAdmin, json, (req, res) => {
     const data = clean(req.body || {});
     if (!data.name) return res.status(400).json({ error: 'Name is required.' });
-    const list = readAll();
-    const entry = Object.assign({ id: list.reduce((m, a) => Math.max(m, a.id), 0) + 1 }, data);
-    list.push(entry);
-    writeAll(list);
+    const store = readStore();
+    const entry = Object.assign({ id: store.nextId }, data);
+    store.nextId += 1;
+    store.ambassadors.push(entry);
+    writeStore(store);
     res.json({ ok: true, ambassador: entry });
   });
 
