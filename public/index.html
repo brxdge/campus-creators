@@ -8,9 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Arimo:wght@700;800&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=121">
+<link rel="stylesheet" href="css/style.css?v=131">
 </head>
-<body>
+<body class="brands-body">
 
 <!-- ABOUT -> FAQ transition wipe (see js/about-wipe.js) -->
 <div class="about-wipe" id="aboutWipe" aria-hidden="true"></div>
@@ -166,74 +166,95 @@
           </span>
         </span>
       </h1>
-      <a href="#work" class="hero-sub-link">Explore Case Studies</a>
-      <p class="hero-note">Over 1,000 student creators across Canadian campuses.</p>
+      <div class="hero-actions">
+        <a href="#contact" class="btn hero-btn" id="openContactModalHero">Book a call <span aria-hidden="true">&#8594;</span></a>
+      </div>
     </div>
   </section>
 
   <!-- SERVICES -->
-  <section class="sec sec-dark" id="services">
+  <section class="sec sec-dark svc-sec" id="services">
+    <div class="svc-bgword" aria-hidden="true"><span id="svcBgWord">Content</span></div>
     <div class="wrap">
-      <div class="sec-head">
-        <h2>What we do</h2>
+      <div class="svc-layout">
+        <div class="svc-left">
+          <h2 class="svc-title">What we<img class="how-star" src="assets/star.png" alt="" aria-hidden="true">do</h2>
+          <ol class="svc-list" id="svcList">
+          <li><button class="svc-item active" type="button" aria-pressed="true" data-title="Content">
+            <span class="svc-num">01</span>
+            <span class="svc-name">Content</span>
+            <span class="svc-desc"><span>Shot and posted by students, on their own feeds.</span></span>
+            <span class="svc-bar" aria-hidden="true"><i></i></span>
+          </button></li>
+          <li><button class="svc-item" type="button" aria-pressed="false" data-title="Ambassadors">
+            <span class="svc-num">02</span>
+            <span class="svc-name">Ambassadors</span>
+            <span class="svc-desc"><span>1,000+ student reps, on campuses across Canada.</span></span>
+            <span class="svc-bar" aria-hidden="true"><i></i></span>
+          </button></li>
+          <li><button class="svc-item" type="button" aria-pressed="false" data-title="Digital promotions">
+            <span class="svc-num">03</span>
+            <span class="svc-name">Digital promotions</span>
+            <span class="svc-desc"><span>Email, giveaways and paid, aimed only at students.</span></span>
+            <span class="svc-bar" aria-hidden="true"><i></i></span>
+          </button></li>
+          <li><button class="svc-item" type="button" aria-pressed="false" data-title="Peer-to-peer">
+            <span class="svc-num">04</span>
+            <span class="svc-name">Peer-to-peer</span>
+            <span class="svc-desc"><span>DMs, flyers, door to door. Where word of mouth starts.</span></span>
+            <span class="svc-bar" aria-hidden="true"><i></i></span>
+          </button></li>
+          <li><button class="svc-item" type="button" aria-pressed="false" data-title="Events">
+            <span class="svc-num">05</span>
+            <span class="svc-name">Events</span>
+            <span class="svc-desc"><span>Live on campus, built around a real night out.</span></span>
+            <span class="svc-bar" aria-hidden="true"><i></i></span>
+          </button></li>
+          <li><button class="svc-item" type="button" aria-pressed="false" data-title="Kits">
+            <span class="svc-num">06</span>
+            <span class="svc-name">Kits</span>
+            <span class="svc-desc"><span>Designed, produced and delivered into students' hands.</span></span>
+            <span class="svc-bar" aria-hidden="true"><i></i></span>
+          </button></li>
+          </ol>
+          <p class="svc-footnote">Run one on its own, or stack them into a full campus activation.</p>
+        </div>
+        <div class="svc-stage" id="svcStage">
+          <div class="svc-deck" aria-hidden="true"><span class="svc-deck-card d1"></span><span class="svc-deck-card d2"></span></div>
+          <div class="svc-frame">
+          <figure class="svc-slide is-active t1" data-title="Content">
+            <img class="svc-poster" alt="" loading="lazy">
+            <video class="svc-video" muted loop playsinline preload="none"></video>
+          </figure>
+          <figure class="svc-slide t2" data-title="Ambassadors">
+            <img class="svc-poster" alt="" loading="lazy">
+            <video class="svc-video" muted loop playsinline preload="none"></video>
+          </figure>
+          <figure class="svc-slide t3" data-title="Digital promotions">
+            <img class="svc-poster" alt="" loading="lazy">
+            <video class="svc-video" muted loop playsinline preload="none"></video>
+          </figure>
+          <figure class="svc-slide t4" data-title="Peer-to-peer">
+            <img class="svc-poster" alt="" loading="lazy">
+            <video class="svc-video" muted loop playsinline preload="none"></video>
+          </figure>
+          <figure class="svc-slide t5" data-title="Events">
+            <img class="svc-poster" alt="" loading="lazy">
+            <video class="svc-video" muted loop playsinline preload="none"></video>
+          </figure>
+          <figure class="svc-slide t6" data-title="Kits">
+            <img class="svc-poster" alt="" loading="lazy">
+            <video class="svc-video" muted loop playsinline preload="none"></video>
+          </figure>
+            <span class="svc-shine" aria-hidden="true"></span>
+            <span class="svc-live"><i></i>Live on campus</span>
+            <div class="svc-frame-ui">
+              <span class="svc-count"><b id="svcCur">01</b><small>/06</small></span>
+              <span class="svc-chip" id="svcChip">Content</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="svc-showcase" id="svcShowcase">
-        <button class="svc-card active" type="button" data-title="Content" data-desc="Shot and posted by students, on their own feeds.">
-          <img class="svc-poster" alt="" loading="lazy">
-          <video class="svc-video" muted loop playsinline preload="none"></video>
-          <div class="svc-overlay">
-            <h3>Content</h3>
-            <p>Shot and posted by students, on their own feeds.</p>
-          </div>
-          <span class="svc-label">Content</span>
-        </button>
-        <button class="svc-card" type="button" data-title="Ambassadors" data-desc="1,000+ student reps, on campuses across Canada.">
-          <img class="svc-poster" alt="" loading="lazy">
-          <video class="svc-video" muted loop playsinline preload="none"></video>
-          <div class="svc-overlay">
-            <h3>Ambassadors</h3>
-            <p>1,000+ student reps, on campuses across Canada.</p>
-          </div>
-          <span class="svc-label">Ambassadors</span>
-        </button>
-        <button class="svc-card" type="button" data-title="Digital promotions" data-desc="Email, giveaways and paid, aimed only at students.">
-          <img class="svc-poster" alt="" loading="lazy">
-          <video class="svc-video" muted loop playsinline preload="none"></video>
-          <div class="svc-overlay">
-            <h3>Digital promotions</h3>
-            <p>Email, giveaways and paid, aimed only at students.</p>
-          </div>
-          <span class="svc-label">Digital promotions</span>
-        </button>
-        <button class="svc-card" type="button" data-title="Peer-to-peer" data-desc="DMs, flyers, door to door. Where word of mouth starts.">
-          <img class="svc-poster" alt="" loading="lazy">
-          <video class="svc-video" muted loop playsinline preload="none"></video>
-          <div class="svc-overlay">
-            <h3>Peer-to-peer</h3>
-            <p>DMs, flyers, door to door. Where word of mouth starts.</p>
-          </div>
-          <span class="svc-label">Peer-to-peer</span>
-        </button>
-        <button class="svc-card" type="button" data-title="Events" data-desc="Live on campus, built around a real night out.">
-          <img class="svc-poster" alt="" loading="lazy">
-          <video class="svc-video" muted loop playsinline preload="none"></video>
-          <div class="svc-overlay">
-            <h3>Events</h3>
-            <p>Live on campus, built around a real night out.</p>
-          </div>
-          <span class="svc-label">Events</span>
-        </button>
-        <button class="svc-card" type="button" data-title="Kits" data-desc="Designed, produced and delivered into students' hands.">
-          <img class="svc-poster" alt="" loading="lazy">
-          <video class="svc-video" muted loop playsinline preload="none"></video>
-          <div class="svc-overlay">
-            <h3>Kits</h3>
-            <p>Designed, produced and delivered into students' hands.</p>
-          </div>
-          <span class="svc-label">Kits</span>
-        </button>
-      </div>
-      <p class="svc-footnote">Run one on its own, or stack them into a full campus activation.</p>
     </div>
   </section>
 
@@ -359,20 +380,28 @@
   </div>
 
   <!-- WORK -->
-  <section class="sec sec-dark" id="work">
+  <section class="sec sec-dark wk-sec" id="work">
     <div class="wrap enter-fade">
-      <div class="sec-head">
-        <h2>The<img class="how-star" src="assets/star.png" alt="" aria-hidden="true">work</h2>
-        <p>Campaign write-ups go here as we finish pulling the results together.</p>
+      <div class="wk-head">
+        <div class="wk-head-copy">
+          <h2>The<img class="how-star" src="assets/star.png" alt="" aria-hidden="true">work</h2>
+          <p>Campaign write-ups go here as we finish pulling the results together.</p>
+        </div>
+        <div class="wk-nav">
+          <span class="wk-counter"><b id="wkCur">01</b><i aria-hidden="true"></i><span id="wkTotal">03</span></span>
+          <button class="wk-arrow" id="wkPrev" type="button" aria-label="Previous case study">&#8592;</button>
+          <button class="wk-arrow" id="wkNext" type="button" aria-label="Next case study">&#8594;</button>
+        </div>
       </div>
 
-      <div class="work-scroller-wrap">
-        <button class="carousel-btn work-arrow prev" id="workPrev" type="button" aria-label="Previous case study">&#8592;</button>
-        <ul class="work-scroller" id="workScroller"></ul>
-        <button class="carousel-btn work-arrow next" id="workNext" type="button" aria-label="Next case study">&#8594;</button>
+      <div class="wk-screen" id="wkScreen">
+        <div class="wk-slides" id="wkSlides"></div>
+        <div class="wk-shade" aria-hidden="true"></div>
+        <span class="wk-case-tag"><i></i>Case study</span>
+        <div class="wk-copy" id="wkCopy" aria-live="polite"></div>
       </div>
 
-      <div class="work-dots" id="workDots"></div>
+      <div class="wk-tabs" id="wkTabs" role="tablist" aria-label="Case studies"></div>
     </div>
   </section>
 
@@ -444,6 +473,12 @@
         <div class="footer-brand">
           <img src="assets/campus-creators-logo.png" alt="Campus Creators" class="footer-logo">
           <p>Connecting brands to campuses across Canada. Student-made content, ambassador programs, and live activations.</p>
+          <div class="footer-social">
+            <a href="https://www.instagram.com/campuscreators.ca" target="_blank" rel="noopener" aria-label="Campus Creators on Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.8.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1.1.4 2.2.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 1.2-.2 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1.1.4-2.2.4-1.3.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-1.2-.1-1.8-.2-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.4-1.1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8c.1-1.2.2-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1.1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.1 0-3.5 0-4.7.1-1.1.1-1.7.2-2.1.4-.5.2-.9.4-1.3.8-.4.4-.6.8-.8 1.3-.2.4-.3 1-.4 2.1C2.7 9.9 2.7 10.3 2.7 12s0 3.5.1 4.7c.1 1.1.2 1.7.4 2.1.2.5.4.9.8 1.3.4.4.8.6 1.3.8.4.2 1 .3 2.1.4 1.2.1 1.6.1 4.7.1s3.5 0 4.7-.1c1.1-.1 1.7-.2 2.1-.4.5-.2.9-.4 1.3-.8.4-.4.6-.8.8-1.3.2-.4.3-1 .4-2.1.1-1.2.1-1.6.1-4.7s0-3.5-.1-4.7c-.1-1.1-.2-1.7-.4-2.1-.2-.5-.4-.9-.8-1.3-.4-.4-.8-.6-1.3-.8-.4-.2-1-.3-2.1-.4C15.5 4 15.1 4 12 4zm0 3.1a4.9 4.9 0 110 9.8 4.9 4.9 0 010-9.8zm0 8.1a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4zm6.2-8.3a1.1 1.1 0 11-2.3 0 1.1 1.1 0 012.3 0z"/></svg></a>
+            <a href="https://www.facebook.com/campuscreators.ca" target="_blank" rel="noopener" aria-label="Campus Creators on Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 10-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7A10 10 0 0022 12z"/></svg></a>
+            <a href="https://www.linkedin.com/company/campus-creators" target="_blank" rel="noopener" aria-label="Campus Creators on LinkedIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 20.5h-3.6v-5.6c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9v5.7H9.4V9h3.4v1.6h.1c.5-.9 1.6-1.8 3.4-1.8 3.6 0 4.3 2.4 4.3 5.5v6.2zM5.3 7.4a2.1 2.1 0 110-4.2 2.1 2.1 0 010 4.2zM7.1 20.5H3.6V9h3.5v11.5zM22.2 0H1.8C.8 0 0 .8 0 1.7v20.6c0 .9.8 1.7 1.8 1.7h20.4c1 0 1.8-.8 1.8-1.7V1.7C24 .8 23.2 0 22.2 0z"/></svg></a>
+            <a href="https://campuscreators.ca" aria-label="campuscreators.ca"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 6h-2.9a15.6 15.6 0 00-1.4-3.6A8 8 0 0118.9 8zM12 4c.8 1.2 1.5 2.5 1.9 4h-3.8c.4-1.5 1.1-2.8 1.9-4zM4.3 14a8.2 8.2 0 010-4h3.4a16.5 16.5 0 000 4H4.3zm.8 2h2.9c.3 1.3.8 2.5 1.4 3.6A8 8 0 015.1 16zM8 8H5.1a8 8 0 014.3-3.6C8.8 5.5 8.3 6.7 8 8zm4 12c-.8-1.2-1.5-2.5-1.9-4h3.8c-.4 1.5-1.1 2.8-1.9 4zm2.3-6H9.7a14.7 14.7 0 010-4h4.6a14.7 14.7 0 010 4zm.3 5.6c.6-1.1 1.1-2.3 1.4-3.6h2.9a8 8 0 01-4.3 3.6zm1.7-5.6a16.5 16.5 0 000-4h3.4a8.2 8.2 0 010 4h-3.4z"/></svg></a>
+          </div>
         </div>
         <div class="footer-col">
           <p class="footer-col-title">Explore</p>
@@ -527,10 +562,11 @@
 </div>
 
 <script src="js/loader.js?v=6"></script>
-<script src="js/main.js?v=53"></script>
+<script src="js/main.js?v=56"></script>
+<script src="js/work-showcase.js?v=1"></script>
 <script src="js/section-jump.js?v=9"></script>
 <script src="js/about-wipe.js?v=4"></script>
-<script src="js/services-showcase.js?v=2"></script>
+<script src="js/services-showcase.js?v=4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollTrigger.min.js"></script>
 <script src="js/hero-zoom.js?v=16"></script>
