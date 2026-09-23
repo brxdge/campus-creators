@@ -252,3 +252,17 @@ input:focus{border-color:var(--red);outline:none;}
 .bulk-del{margin-left:auto;}
 .bulk-del:not([hidden]) + .btn{margin-left:0;}
 @media (max-width:860px){ .msg-head{grid-template-columns:18px 8px 1fr auto 34px;} }
+
+/* ---------- CAMPUS AMBASSADORS ---------- */
+.amb-bar{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.amb-count{font-size:13px;font-weight:700;color:rgba(255,255,255,.5);}
+.amb-add{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:18px;max-width:720px;}
+.amb-form{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.amb-form input{padding:10px 12px;font-size:14px;border-radius:9px;}
+.amb-form-actions{grid-column:1 / -1;display:flex;gap:8px;}
+.slot .amb-form{grid-template-columns:1fr;padding:0 4px;}
+.amb-sub{margin:-6px 4px 0;font-size:12.5px;color:rgba(255,255,255,.5);}
+.amb-actions{display:flex;align-items:center;gap:8px;padding:0 4px;}
+.amb-del{background:none;border:0;color:rgba(255,255,255,.45);font:600 13px var(--body);cursor:pointer;padding:6px 8px;margin-left:auto;}
+.amb-del:hover{color:var(--red);}
+@media (max-width:640px){ .amb-form{grid-template-columns:1fr;} }
