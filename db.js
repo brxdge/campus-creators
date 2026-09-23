@@ -8,8 +8,11 @@ const path = require('path');
 const fs = require('fs');
 
 // DATA_DIR is where the JSON file lives. On Railway point this at a mounted
-// volume (e.g. /data) so it survives redeploys.
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+// volume (e.g. /data) so it survives redeploys. If only UPLOAD_DIR is set
+// (e.g. /data/uploads), its parent folder is used, so content.json always
+// sits on the same volume as the uploads, roster.json and submissions.json.
+const DATA_DIR = process.env.DATA_DIR ||
+  (process.env.UPLOAD_DIR ? path.dirname(process.env.UPLOAD_DIR) : path.join(__dirname, 'data'));
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const DB_FILE = path.join(DATA_DIR, 'content.json');
