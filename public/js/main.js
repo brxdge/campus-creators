@@ -53,6 +53,18 @@ if ('IntersectionObserver' in window && revealEls.length) {
   revealEls.forEach((el) => el.classList.add('in-view'));
 }
 
+// ---- performance: freeze every CSS animation in sections that are off
+// screen (feed wall columns, pulses, floats, glows…). They resume exactly
+// where they left off when the section scrolls back into view.
+(function pauseOffscreenAnimations() {
+  const secs = document.querySelectorAll('#sections > section, #sections > .band');
+  if (!secs.length || !('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => e.target.classList.toggle('is-offscreen', !e.isIntersecting));
+  }, { rootMargin: '100px 0px' });
+  secs.forEach((s) => io.observe(s));
+})();
+
 // ---- "The Work" lives in work-showcase.js ----
 
 // ---- media source: loaded from the admin portal API ----
@@ -722,7 +734,8 @@ if (clientsSection && brandPanel && showcaseTrack && clientTabsEl) {
       video.muted = true;
       video.loop = true;
       video.playsInline = true;
-      video.autoplay = true;
+      // only start decoding when the section is actually on screen
+      video.autoplay = !!(clientsSection && clientsSection.dataset.visible === '1');
       video.preload = 'auto';
       video.disablePictureInPicture = true;
       video.disableRemotePlayback = true;
@@ -847,6 +860,20 @@ if (clientsSection && brandPanel && showcaseTrack && clientTabsEl) {
   function next() { goTo(activeIndex + 1, true); }
   function prev() { goTo(activeIndex - 1, true); }
 
+  let clientsVisible = false;
+  if (clientsSection && 'IntersectionObserver' in window) {
+    new IntersectionObserver((entries) => {
+      clientsVisible = entries[0].isIntersecting;
+      clientsSection.dataset.visible = clientsVisible ? '1' : '0';
+      clientsSection.querySelectorAll('video').forEach((v) => {
+        if (clientsVisible) v.play().catch(() => {}); else v.pause();
+      });
+      if (clientsVisible) startAuto(); else stopAuto();
+    }, { threshold: 0.2 }).observe(clientsSection);
+  } else {
+    clientsVisible = true;
+  }
+
   function stopAuto() {
     clearInterval(autoTimer);
     autoTimer = null;
@@ -857,7 +884,7 @@ if (clientsSection && brandPanel && showcaseTrack && clientTabsEl) {
   // auto-advances at all under reduced motion.
   function startAuto() {
     stopAuto();
-    if (prefersReducedMotion || pool.length < 2 || document.hidden) return;
+    if (prefersReducedMotion || pool.length < 2 || document.hidden || !clientsVisible) return;
     autoTimer = setInterval(() => {
       activeIndex = (activeIndex + 1) % pool.length;
       renderCarousel();
@@ -950,7 +977,7 @@ if (clientsSection && brandPanel && showcaseTrack && clientTabsEl) {
     activeIndex = 0;
     updateNote(media.photos.length + media.videos.length);
     renderCarousel();
-    startAuto();
+    if (clientsSection && clientsSection.dataset.visible === '1') startAuto();
   });
 }
 
@@ -966,8 +993,14 @@ if (stickyCta && contactSection) {
     const atContact = contactTop < window.innerHeight * 0.9;
     stickyCta.classList.toggle('show', pastHero && !atContact);
   };
-  window.addEventListener('scroll', update, { passive: true });
-  window.addEventListener('resize', update);
+  let queued = false;
+  const onScrollCta = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; update(); });
+  };
+  window.addEventListener('scroll', onScrollCta, { passive: true });
+  window.addEventListener('resize', onScrollCta);
   update();
 }
 
@@ -993,24 +1026,58 @@ if (navLinks) {
 }
 
 
-// Note: the hero scroll-zoom effect lives in js/hero-zoom.js, not here —
-// it's built on GSAP ScrollTrigger and kept in its own file.
-
 // ---- contact section: blurred background video ----
 // Same honest situation as How It Works and the services showcase —
 // there's no dedicated "contact" footage, so this reuses real uploaded
 // brand campaign video, purely for ambient motion/colour behind the form.
 (function contactBackgroundVideo() {
   const video = document.getElementById('contactVideo');
-  if (!video) return;
+  const section = document.getElementById('contact');
+  if (!video || !section) return;
+  let contactVisible = false;
+
+  // Performance: a CSS blur on a full-screen playing video is re-computed
+  // every frame and was the heaviest thing on the page. Instead the clip is
+  // drawn into a tiny canvas (48x27) a few dozen times a second and the
+  // browser simply stretches it to full size — upscaling that far produces
+  // the same soft, blurred look for almost no work.
+  const canvas = document.createElement('canvas');
+  canvas.className = 'contact-canvas';
+  canvas.width = 48;
+  canvas.height = 27;
+  canvas.setAttribute('aria-hidden', 'true');
+  video.after(canvas);
+  const ctx = canvas.getContext('2d', { alpha: false });
+  let raf = null;
+  let lastDraw = 0;
+
+  function draw(now) {
+    raf = requestAnimationFrame(draw);
+    if (now - lastDraw < 50) return;           // ~20fps is plenty for a blurred backdrop
+    lastDraw = now;
+    if (video.readyState >= 2) {
+      try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); canvas.classList.add('ready'); } catch (e) { /* not ready */ }
+    }
+  }
+  function start() {
+    if (!video.getAttribute('src')) return;
+    video.play().catch(() => {});
+    if (!raf) raf = requestAnimationFrame(draw);
+  }
+  function stop() {
+    video.pause();
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+  }
 
   function assignVideo() {
     const brands = Object.keys(typeof MEDIA_DATA !== 'undefined' ? MEDIA_DATA : {});
     for (const brand of brands) {
       const vids = (MEDIA_DATA[brand] && MEDIA_DATA[brand].videos) || [];
       if (vids.length && vids[0].src && typeof resolveMedia === 'function') {
-        video.src = resolveMedia(vids[0].src);
-        video.play().catch(() => {});
+        const src = resolveMedia(vids[0].src);
+        if (video.getAttribute('src') !== src) video.src = src;
+        if (contactVisible) start();
         return;
       }
     }
@@ -1019,15 +1086,11 @@ if (navLinks) {
   assignVideo();
   document.addEventListener('mediaDataReady', assignVideo);
 
-  const section = document.getElementById('contact');
-  if (section && 'IntersectionObserver' in window) {
-    new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) video.play().catch(() => {});
-        else video.pause();
-      },
-      { threshold: 0.1 }
-    ).observe(section);
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver((entries) => {
+      contactVisible = entries[0].isIntersecting;
+      if (contactVisible) start(); else stop();
+    }, { threshold: 0.1 }).observe(section);
   }
 })();
 
@@ -1097,3 +1160,17 @@ if (form && formMsg) {
     }
   });
 }
+
+
+// ---- performance: pause every CSS animation inside sections that are off
+// screen (feed wall, glows, pulses, shimmers). They resume the moment the
+// section scrolls back into view, so nothing looks different — the browser
+// just stops compositing/painting motion nobody can see.
+(function pauseOffscreenAnimations() {
+  if (!('IntersectionObserver' in window)) return;
+  const secs = document.querySelectorAll('#sections > section, #sections > .band');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => e.target.classList.toggle('is-offscreen', !e.isIntersecting));
+  }, { rootMargin: '120px 0px' });
+  secs.forEach((s) => io.observe(s));
+})();
