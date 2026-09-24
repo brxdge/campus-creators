@@ -2670,3 +2670,61 @@ body.brands-body{background:#000;}
 /* 4. keep big decorative layers on their own compositor layer */
 #services.svc-sec::before,.svc-bgword{will-change:transform;}
 .svc-frame{will-change:transform;}
+
+
+/* ============================================================
+   SCROLL CHOREOGRAPHY support (brands-motion.js)
+   html.cc-choreo is only set when motion is allowed and GSAP loaded.
+   ============================================================ */
+/* Lenis owns smooth scrolling — native smooth scroll would fight it */
+html.lenis,html.lenis body{height:auto;}
+html.lenis{scroll-behavior:auto !important;}
+.lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:contain;}
+.lenis.lenis-stopped{overflow:hidden;}
+
+/* the old per-section fade-in would double up with the choreography */
+.cc-choreo .enter-fade{opacity:1;transform:none;transition:none;}
+
+/* What We Do rides up over the pinned hero */
+.cc-choreo-desktop #hero{z-index:0;}
+.cc-choreo-desktop #services{position:relative;z-index:2;}
+.cc-choreo-desktop #sections > section,.cc-choreo-desktop #sections > .band{position:relative;}
+.cc-choreo #hero .feed-wall,.cc-choreo #hero .hero-inner,.cc-choreo .wk-slides,.cc-choreo .svc-stage{will-change:transform;}
+
+/* word masks used for rising headline words */
+.cc-word{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.06em;margin-bottom:-.06em;}
+.cc-word > span{display:inline-block;will-change:transform;}
+
+/* giant outlined line of type drifting behind Creators in Action */
+.cc-ghost{
+  position:absolute;left:0;top:50%;z-index:0;pointer-events:none;white-space:nowrap;
+  transform:translateY(-50%);font-family:var(--display);font-size:clamp(140px,19vw,320px);line-height:.85;
+  text-transform:uppercase;color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.07);
+}
+.cc-choreo #clientsSection{position:relative;}
+.cc-choreo #clientsSection .clients-inner{position:relative;z-index:1;}
+
+/* in scroll-driven mode the services progress bar follows scroll, so no
+   transition lag on it */
+.svc-scroll-driven .svc-item .svc-bar i{transition:none;}
+
+/* The Work: leave room for the tabs on shorter laptop screens */
+@media (min-width:761px){ .wk-screen{height:min(calc(100vh - 410px),600px);min-height:240px;} }
+
+/* ============================================================
+   HOW IT WORKS — always one screen (desktop, laptop, tablet, phone)
+   Heading and card images size from the viewport HEIGHT as well as
+   width, so short laptop screens shrink them instead of overflowing.
+   ============================================================ */
+@media (min-width:761px){
+  #process{padding:clamp(64px,9vh,96px) 0 clamp(20px,3vh,36px) !important;}
+  #process .sec-head{margin-bottom:clamp(14px,2.4vh,30px);}
+  #process .sec-head h2{font-size:clamp(52px,min(11vw,14.5vh),170px);padding-top:.25em;}
+  #process .sec-head p{margin-top:6px;font-size:clamp(13px,1.6vh,16px);}
+  .how-step:nth-child(2),.how-step:nth-child(4){margin-top:0;}
+  .how-media{aspect-ratio:auto;height:clamp(150px,calc(100vh - 480px),360px);}
+  .how-media h3{font-size:clamp(16px,min(1.7vw,2.6vh),26px);}
+  .how-card p{font-size:12.5px;line-height:1.45;margin-top:10px;}
+  .how-cta{margin-top:clamp(12px,2vh,24px);}
+  .how-cta .btn{padding:12px 24px;}
+}
