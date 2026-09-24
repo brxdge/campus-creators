@@ -197,7 +197,7 @@
     raf = requestAnimationFrame(tick);
     const dt = last ? Math.min(100, now - last) : 0;
     last = now;
-    if (!inView || hovering || waiting || reduceMotion) return;
+    if (!inView || (hovering && !scrollDriven) || waiting || reduceMotion) return;
 
     const p = parts(idx);
     elapsed += dt;
@@ -206,6 +206,10 @@
       tryShowVideo();
     }
     const total = totalMs(p);
+    // when the page's scroll choreography drives this section, scroll
+    // decides which service is showing and fills the bar — the clock only
+    // handles the photo -> video hand-off
+    if (scrollDriven) return;
     if (p.bar) p.bar.style.transform = `scaleX(${Math.min(1, elapsed / total)})`;
     if (elapsed >= total) setActive((idx + 1) % items.length);
   }
@@ -264,7 +268,10 @@
 
   // ---------- input ----------
   items.forEach((b, k) => {
-    b.addEventListener('click', () => setActive(k));
+    b.addEventListener('click', () => {
+      setActive(k);
+      document.dispatchEvent(new CustomEvent('cc:svc-select', { detail: { index: k } }));
+    });
     if (finePointer) {
       let dwell = null;
       b.addEventListener('mouseenter', () => { clearTimeout(dwell); dwell = setTimeout(() => setActive(k), 90); });
@@ -300,13 +307,31 @@
   if ('IntersectionObserver' in window) {
     new IntersectionObserver((entries) => {
       inView = entries[0].isIntersecting;
+      if (inView) section.classList.add('svc-in');
+      else if (entries[0].boundingClientRect.top > 0) section.classList.remove('svc-in');
       if (inView) startClock(); else stopClock();
       syncPlayback();
     }, { threshold: 0.35 }).observe(section);
   } else {
     inView = true;
+    section.classList.add('svc-in');
     startClock();
   }
+  if (reduceMotion) section.classList.add('svc-in');
+  section.classList.add('svc-ready');
+
+  // control surface for brands-motion.js (scroll-driven mode on desktop)
+  let scrollDriven = false;
+  window.CCServices = {
+    count: items.length,
+    get index() { return idx; },
+    setActive(i) { if (i !== idx) setActive(i); },
+    setScrollDriven(on) { scrollDriven = !!on; section.classList.toggle('svc-scroll-driven', scrollDriven); },
+    setBar(frac) {
+      const b = items[idx].querySelector('.svc-bar i');
+      if (b) b.style.transform = `scaleX(${Math.max(0, Math.min(1, frac))})`;
+    },
+  };
 
   assignMedia();
   document.addEventListener('mediaDataReady', assignMedia);
