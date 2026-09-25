@@ -1071,7 +1071,12 @@ if (navLinks) {
   }
 
   function assignVideo() {
-    const brands = Object.keys(typeof MEDIA_DATA !== 'undefined' ? MEDIA_DATA : {});
+    // footer backdrop: the Lavelle campaign clip first (matched loosely, so
+    // "Lavelle", "LAVELLE" or "Lavelle Co." in the admin all work); any
+    // other brand's video only if Lavelle has none uploaded yet
+    const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const all = Object.keys(typeof MEDIA_DATA !== 'undefined' ? MEDIA_DATA : {});
+    const brands = all.filter((b) => norm(b).includes('lavelle')).concat(all.filter((b) => !norm(b).includes('lavelle')));
     for (const brand of brands) {
       const vids = (MEDIA_DATA[brand] && MEDIA_DATA[brand].videos) || [];
       if (vids.length && vids[0].src && typeof resolveMedia === 'function') {

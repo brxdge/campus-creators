@@ -104,7 +104,7 @@
         ease: 'none',
         scrollTrigger: {
           trigger: rosterSec, start: 'top top', end: () => '+=' + vh() * 1.3,
-          pin: true, scrub: 0.25, invalidateOnRefresh: true,
+          pin: true, scrub: 0.4, invalidateOnRefresh: true,
         },
       });
     }
@@ -113,7 +113,7 @@
     const how = $('#tal-how');
     if (how) {
       const steps = $$('#tal-how .ts-step');
-      const tl = gsap.timeline({ scrollTrigger: { trigger: how, start: 'top top', end: () => '+=' + vh() * 1.3, pin: true, scrub: 0.3 } });
+      const tl = gsap.timeline({ scrollTrigger: { trigger: how, start: 'top top', end: () => '+=' + vh() * 1.3, pin: true, scrub: 0.5 } });
       tl.from('#tal-how .ts-head', { yPercent: 70, scale: 1.3, duration: 1, ease: 'power2.out' }, 0)
         .from('#tal-how .ts-line', { opacity: 0, duration: 0.3 }, 0.35)
         .fromTo('#tal-how .ts-line i', { scaleX: 0 }, { scaleX: 1, duration: 2, ease: 'none' }, 0.5);
@@ -173,12 +173,12 @@
       // quick commit, soft landing: most of the distance is covered early,
       // then it eases gently into place. Shorter hops (steps inside a
       // pinned section) take less time than full-section moves.
-      const ease = (t) => 1 - Math.pow(1 - t, 4);
-      const durFor = (dist) => Math.min(0.90, Math.max(1.0, 0.5 + (dist / vh()) * 0.35));
+      const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2) * 0.35 + (1 - Math.pow(1 - t, 3)) * 0.65;
+      const durFor = (dist) => Math.min(1.15, Math.max(0.85, 0.75 + (dist / vh()) * 0.4));
       const glideTo = (y) => {
         animating = true;
         clearTimeout(failsafe);
-        failsafe = setTimeout(() => { animating = false; }, 1300);
+        failsafe = setTimeout(() => { animating = false; }, 1650);
         lenis.scrollTo(y, { duration: durFor(Math.abs(y - window.scrollY)), easing: ease, lock: true, force: true,
           onComplete: () => { animating = false; clearTimeout(failsafe); } });
       };

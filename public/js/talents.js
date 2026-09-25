@@ -429,9 +429,20 @@
     const section = document.getElementById('tal-closer');
     if (!video || !section) return;
     function assign() {
-      const { videos } = collectMedia();
-      if (!videos.length) return;
-      const pick = videos[videos.length > 1 ? 1 : 0];
+      // footer backdrop: the Twisted Tea campaign clip (matched loosely, so
+      // "Twisted Tea", "TwistedTea" or "Twisted Tea Canada" all work);
+      // falls back to any other brand video if Twisted Tea has none yet
+      const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+      const data = (typeof MEDIA_DATA !== 'undefined' && MEDIA_DATA) ? MEDIA_DATA : {};
+      const resolve = (typeof resolveMedia === 'function') ? resolveMedia : (x) => x;
+      const key = Object.keys(data).find((k) => norm(k).includes('twistedtea'));
+      const tt = key ? ((data[key].videos || []).find((v) => v && v.src)) : null;
+      let pick = tt ? { src: resolve(tt.src) } : null;
+      if (!pick) {
+        const { videos } = collectMedia();
+        if (!videos.length) return;
+        pick = videos[videos.length > 1 ? 1 : 0];
+      }
       if (video.getAttribute('src') === pick.src) return;
       video.src = pick.src;
       if (section.dataset.visible === '1' && !reduceMotion) video.play().catch(() => {});

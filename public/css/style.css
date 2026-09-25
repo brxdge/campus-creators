@@ -2835,3 +2835,61 @@ html.lenis{scroll-behavior:auto !important;}
   .tq-q{font-size:15px;}
   .tq-item p{margin:0 0 12px 38px;font-size:12.5px;}
 }
+
+/* ============================================================
+   EDITORIAL TYPE SCALE (desktop) — headlines fill the frame.
+   Sizes use min(width, height) so big type still fits one screen on
+   short laptops; the content column is wider so type can breathe.
+   ============================================================ */
+@media (min-width:901px){
+  .wrap{max-width:1680px;padding:0 clamp(28px,3.4vw,64px);}
+
+  /* Brands */
+  .brands-body .svc-title{font-size:clamp(56px,min(6.4vw,10vh),140px);}
+  .brands-body .svc-name{font-size:clamp(26px,min(3.2vw,4.9vh),66px);}
+  .brands-body .svc-desc > span{font-size:clamp(15px,1.15vw,19px);}
+  .brands-body .clients-head h2{font-size:clamp(46px,min(8vw,9vh),160px);}
+  .brands-body .band h2{font-size:clamp(72px,min(9.5vw,17vh),200px);line-height:.88;}
+  .brands-body .band-side p{font-size:clamp(17px,1.35vw,22px);}
+  .brands-body .wk-head h2{font-size:clamp(60px,min(7.5vw,11vh),150px);}
+  .brands-body .wk-title{font-size:clamp(52px,min(7vw,11vh),140px);}
+  .brands-body .about{grid-template-columns:1.25fr .75fr;gap:clamp(40px,5vw,100px);}
+  .brands-body .about h2{font-size:clamp(46px,min(5.4vw,8.4vh),120px);line-height:.9;}
+  .brands-body .about p{font-size:clamp(16px,1.25vw,21px);max-width:62ch;}
+  .brands-body .about-pull .about-eyebrow{font-size:clamp(84px,min(12vw,20vh),260px);line-height:.85;}
+  .brands-body .about-pull p{font-size:clamp(22px,min(2.5vw,3.9vh),52px);}
+  .brands-body .faq-wrap{grid-template-columns:1fr 1.1fr;gap:clamp(40px,5vw,100px);}
+  .brands-body .faq-intro h2{font-size:clamp(72px,min(9vw,16vh),190px);line-height:.88;}
+  .brands-body .faq-intro p{font-size:clamp(17px,1.35vw,22px);max-width:36ch;}
+  .brands-body .faq-item summary{font-size:clamp(18px,min(1.8vw,3.1vh),34px);padding:clamp(16px,2.6vh,28px) 0;}
+  .brands-body .faq-body p{font-size:clamp(15px,1.15vw,19px);}
+  .brands-body .contact-cta-link{font-size:clamp(80px,min(13vw,19vh),280px);}
+
+  /* Talents */
+  .tal-body .tw-layout,.tal-body .tq-layout{gap:clamp(40px,5vw,100px);}
+  .tal-body .tw-head h2{font-size:clamp(76px,min(10vw,17vh),210px);line-height:.86;}
+  .tal-body .tw-head p,.tal-body .tq-intro p,.tal-body .ts-head p{font-size:clamp(16px,1.3vw,21px);}
+  .tal-body .tw-num{font-size:clamp(48px,min(5.4vw,9vh),110px);}
+  .tal-body .tw-text h3{font-size:clamp(26px,min(2.8vw,4.8vh),54px);}
+  .tal-body .tw-text p{font-size:clamp(14px,1.1vw,18px);}
+  .tal-body .tal-roster-sec .tal-sec-head h2{font-size:clamp(46px,min(8vw,8.5vh),160px);}
+  .tal-body .tal-card{flex-basis:clamp(150px,min(17vw,27vh),260px);}
+  .tal-body .ts-head{max-width:none;}
+  .tal-body .ts-head h2{font-size:clamp(60px,min(8vw,13vh),170px);}
+  .tal-body .ts-num{font-size:clamp(64px,min(7.5vw,13vh),150px);}
+  .tal-body .ts-step h3{font-size:clamp(24px,min(2.5vw,4.4vh),48px);}
+  .tal-body .ts-step p{font-size:clamp(14px,1.1vw,18px);max-width:34ch;}
+  .tal-body .tq-intro h2{font-size:clamp(64px,min(8.4vw,15vh),180px);line-height:.88;}
+  .tal-body .tq-q{font-size:clamp(22px,min(2.3vw,4vh),44px);}
+  .tal-body .tq-item p{font-size:clamp(14px,1.1vw,18px);}
+  .tal-body .tal-closer-main h2{font-size:clamp(60px,min(7.4vw,13vh),160px);}
+}
+@media (min-width:901px){
+  .tal-body #tal-roster{padding-top:clamp(60px,9vh,110px);padding-bottom:clamp(24px,4vh,60px);}
+  .tal-body #tal-roster .tal-sec-head{margin-bottom:clamp(16px,3vh,40px);}
+  .tal-body .tal-roster-cta{margin-top:clamp(14px,2.4vh,34px);}
+}
+@media (min-width:901px) and (max-height:720px){
+  .brands-body .clients{padding-top:72px;}
+  .brands-body .showcase-track .phone.is-center{flex-basis:clamp(120px,19vh,206px);}
+}

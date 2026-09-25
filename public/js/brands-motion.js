@@ -84,7 +84,7 @@
     if (typeof Lenis !== 'undefined') {
       // wheel input is handled by the section glide below (one gesture =
       // one step); Lenis provides the smooth programmatic scrolling
-      lenis = new Lenis({ duration: 0.90, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), smoothWheel: false });
+      lenis = new Lenis({ duration: 1.15, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), smoothWheel: false });
       lenis.on('scroll', ScrollTrigger.update);
       const raf = (time) => lenis.raf(time * 1000);
       gsap.ticker.add(raf);
@@ -138,46 +138,26 @@
           scrollTrigger: { trigger: services, start: 'top bottom', end: 'top top', scrub: true } });
     }
 
-    // ---------- WHAT WE DO: pinned, scroll steps through services ----------
-    if (services && window.CCServices) {
-      const n = window.CCServices.count;
-      window.CCServices.setScrollDriven(true);
-
-      // entrance while it slides up over the hero
-      gsap.timeline({ scrollTrigger: { trigger: services, start: 'top bottom', end: 'top top', scrub: true } })
-        .from('#services .svc-title', { scale: 1.45, yPercent: 40, transformOrigin: 'left bottom', ease: 'none' }, 0)
-        .from('#services .svc-item', { yPercent: 120, opacity: 0, stagger: 0.06, ease: 'none' }, 0.1)
-        .from('#services .svc-stage', { yPercent: 22, rotate: 5, scale: 0.9, ease: 'none' }, 0);
-
-      const svcPin = ScrollTrigger.create({
-        trigger: services,
-        start: 'top top',
-        end: () => '+=' + vh() * (n * 0.55),
-        pin: true,
-        onUpdate: (self) => {
-          const pos = self.progress * n;
-          const i = Math.min(n - 1, Math.floor(pos));
-          window.CCServices.setActive(i);
-          window.CCServices.setBar(i === n - 1 && self.progress >= 1 ? 1 : pos - i);
-        },
+    // ---------- WHAT WE DO: one stop, a single composed entrance ----------
+    // The services keep cycling on their own timer (and on hover / click);
+    // scroll no longer steps through them one by one. As the section rises
+    // over the hero, the whole composition assembles: heading settles from
+    // oversized, the service names slide in from alternating sides, the
+    // stage irises open and the giant background word drifts across.
+    if (services) {
+      const items = $$('#services .svc-item');
+      const tl = gsap.timeline({ scrollTrigger: { trigger: services, start: 'top bottom', end: 'top top', scrub: 0.5 } });
+      tl.from('#services .svc-title', { scale: 1.45, yPercent: 40, transformOrigin: 'left bottom', ease: 'none' }, 0)
+        .fromTo('#services .svc-stage',
+          { clipPath: 'inset(22% 18% 22% 18% round 40px)', yPercent: 12, rotate: 4 },
+          { clipPath: 'inset(-20% -40% -20% -20% round 0px)', yPercent: 0, rotate: 0, ease: 'none' }, 0.1);
+      items.forEach((it, i) => {
+        tl.from(it, { xPercent: i % 2 ? 18 : -18, opacity: 0, ease: 'none' }, 0.15 + i * 0.07);
       });
+      tl.from('#services .svc-footnote', { opacity: 0, ease: 'none' }, 0.7);
 
-      gsap.fromTo('#services .svc-bgword',
-        { xPercent: 12 },
-        { xPercent: -28, ease: 'none', scrollTrigger: { trigger: services, start: 'top top', end: () => '+=' + vh() * (n * 0.55), scrub: true } });
-
-      // clicking a service glides to its point in the pinned timeline
-      const onSelect = (e) => {
-        if (!lenis) return;
-        const i = e.detail.index;
-        const y = svcPin.start + ((i + 0.5) / n) * (svcPin.end - svcPin.start);
-        lenis.scrollTo(y, { duration: 1 });
-      };
-      document.addEventListener('cc:svc-select', onSelect);
-      var cleanupSvc = () => {
-        document.removeEventListener('cc:svc-select', onSelect);
-        window.CCServices.setScrollDriven(false);
-      };
+      gsap.fromTo('#services .svc-bgword', { xPercent: 18 }, { xPercent: -22, ease: 'none',
+        scrollTrigger: { trigger: services, start: 'top bottom', end: 'bottom top', scrub: true } });
     }
 
     // ---------- CREATORS IN ACTION: type compresses in, phones rise ----------
@@ -198,7 +178,7 @@
     if (process) {
       const steps = $$('#howSteps .how-step');
       const tl = gsap.timeline({
-        scrollTrigger: { trigger: process, start: 'top top', end: () => '+=' + vh() * 1.6, pin: true, scrub: 0.3 },
+        scrollTrigger: { trigger: process, start: 'top top', end: () => '+=' + vh() * 1.6, pin: true, scrub: 0.5 },
       });
       tl.from('#process .sec-head h2', { yPercent: 70, scale: 1.25, ease: 'power2.out', duration: 1 }, 0)
         .from('#process .sec-head p', { opacity: 0, y: 30, duration: 0.5 }, 0.5);
@@ -275,17 +255,17 @@
       // name rather than as direct children of #sections)
       const secs = $$('#hero, #services, #clientsSection, #process, #sections .band, #work, #about, #faq, #contact');
       let stops = [];
+      let owners = {};          // stop position -> section id
       const buildStops = () => {
         const max = ScrollTrigger.maxScroll(window);
         const pins = ScrollTrigger.getAll().filter((t) => t.pin);
         const list = [];
+        const listIds = [];
+        const push = list.push.bind(list);
         secs.forEach((sec) => {
+          list.push = (...ys) => { ys.forEach(() => listIds.push(sec.id || 'band')); return push(...ys); };
           const pin = pins.find((t) => t.trigger === sec);
-          if (pin && sec.id === 'services' && window.CCServices) {
-            const n = window.CCServices.count;
-            const len = pin.end - pin.start;
-            for (let i = 0; i < n; i++) list.push(pin.start + (i + 0.5) * (len / n));
-          } else if (pin && sec.id === 'process') {
+          if (pin && sec.id === 'process') {
             list.push(pin.start, pin.end);
           } else if (pin) {
             list.push(pin.start);
@@ -297,6 +277,8 @@
           }
         });
         stops = Array.from(new Set(list.map((y) => Math.round(Math.max(0, Math.min(max, y)))))).sort((a, b) => a - b);
+        owners = {};
+        list.forEach((y, i) => { owners[Math.round(Math.max(0, Math.min(max, y)))] = listIds[i]; });
       };
       ScrollTrigger.addEventListener('refresh', buildStops);
       requestAnimationFrame(buildStops);
@@ -306,20 +288,38 @@
       // quick commit, soft landing: most of the distance is covered early,
       // then it eases gently into place. Shorter hops (steps inside a
       // pinned section) take less time than full-section moves.
-      const ease = (t) => 1 - Math.pow(1 - t, 4);
-      const durFor = (dist) => Math.min(0.95, Math.max(0.6, 0.5 + (dist / vh()) * 0.35));
+      const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2) * 0.35 + (1 - Math.pow(1 - t, 3)) * 0.65;
+      const durFor = (dist) => Math.min(1.15, Math.max(0.85, 0.75 + (dist / vh()) * 0.4));
       const glideTo = (y) => {
         animating = true;
         clearTimeout(failsafe);
-        failsafe = setTimeout(() => { animating = false; }, 1300);
+        failsafe = setTimeout(() => { animating = false; }, 1650);
         lenis.scrollTo(y, { duration: durFor(Math.abs(y - window.scrollY)), easing: ease, lock: true, force: true,
           onComplete: () => { animating = false; clearTimeout(failsafe); } });
+      };
+      const nearestOwner = (y) => {
+        let best = null, d = Infinity;
+        stops.forEach((s) => { const dd = Math.abs(s - y); if (dd < d) { d = dd; best = owners[s]; } });
+        return best;
       };
       const step = (dir) => {
         if (!stops.length) buildStops();
         const y = window.scrollY;
         const target = dir > 0 ? stops.find((s) => s > y + 4) : [...stops].reverse().find((s) => s < y - 4);
-        if (target !== undefined) glideTo(target);
+        if (target === undefined) return;
+        // About -> FAQ keeps its signature move: the circle wipe that grows
+        // out of the spinning star, then reveals FAQ underneath
+        if (dir > 0 && owners[target] === 'faq' && nearestOwner(y) === 'about' && typeof window.playAboutWipeTransition === 'function') {
+          animating = true;
+          clearTimeout(failsafe);
+          failsafe = setTimeout(() => { animating = false; }, 3000);
+          window.playAboutWipeTransition(
+            () => lenis.scrollTo(target, { immediate: true, force: true }),
+            () => { animating = false; clearTimeout(failsafe); }
+          );
+          return;
+        }
+        glideTo(target);
       };
 
       // a trackpad flick fires a long tail of wheel events — the whole
@@ -366,7 +366,6 @@
       if (cleanupGlide) cleanupGlide();
       root.classList.remove('cc-choreo-desktop');
       $$('.cc-ghost').forEach((g) => g.remove());
-      if (typeof cleanupSvc === 'function') cleanupSvc();
       if (typeof cleanupLenis === 'function') cleanupLenis();
     };
   });

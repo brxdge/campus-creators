@@ -54,37 +54,25 @@
     }
 
     function assignClips() {
-      if (typeof resolveMedia !== 'function') return;
       const pool = collectVideoPool();
+      if (!pool.length) return;   // nothing uploaded yet — cards just show as static
       const photoPool = collectPhotoPool();
 
       steps.forEach((step, i) => {
+        const clip = pool[i % pool.length];   // cycle if fewer than 4 real clips exist
         const media = step.querySelector('.how-media');
         const poster = step.querySelector('.how-poster');
         const video = step.querySelector('.how-video');
-        if (!media || !poster || !video) return;
+        if (!media || !poster || !video || typeof resolveMedia !== 'function') return;
 
-        // admin-assigned media for this step wins over the shared pool
-        const own = typeof slotPick === 'function' ? slotPick('slot-how-' + (i + 1)) : null;
-        if (own && (own.video || own.poster)) {
-          if (own.poster) poster.src = own.poster;
-          if (own.video) { video.style.display = ''; video.src = own.video; }
-          else { video.pause(); video.removeAttribute('src'); video.style.display = 'none'; }
-        } else {
-          if (!pool.length) return;   // nothing uploaded yet — card stays static
-          const clip = pool[i % pool.length];   // cycle if fewer than 4 real clips exist
-          const posterSrc = clip.poster || fallbackPoster(clip.brand, photoPool);
-          if (posterSrc) poster.src = resolveMedia(posterSrc);
-          video.style.display = '';
-          video.src = resolveMedia(clip.src);
-        }
+        const posterSrc = clip.poster || fallbackPoster(clip.brand, photoPool);
+        if (posterSrc) poster.src = resolveMedia(posterSrc);
+        video.src = resolveMedia(clip.src);
         // same hardening as every other video on the site — no native
         // Picture-in-Picture or remote-playback hover icons
         video.disablePictureInPicture = true;
         video.disableRemotePlayback = true;
 
-        if (step.dataset.hoverBound) return;
-        step.dataset.hoverBound = '1';
         let hoverTimer = null;
         step.addEventListener('mouseenter', () => {
           clearTimeout(hoverTimer);
@@ -116,6 +104,8 @@
   // ---------- entrance: connecting line + sequential reveal ----------
   function setupEntrance() {
     if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
+    // brands-motion.js owns this section's choreography when it's active
+    if (document.documentElement.classList.contains('cc-choreo')) return;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const section = document.getElementById('process');
