@@ -373,7 +373,60 @@
   // ============================================================
   // PHONES — lighter: no pins, native scroll, a few scrubbed moments
   // ============================================================
+
+  // ---------- phones: one swipe = one glide to the next section ----------
+  function touchGlide(secSel) {
+    if (typeof Lenis === 'undefined') return null;
+    const lenis = new Lenis({ smoothWheel: false, syncTouch: false });
+    lenis.on('scroll', ScrollTrigger.update);
+    const raf = (t) => lenis.raf(t * 1000);
+    gsap.ticker.add(raf);
+    const secs = $$(secSel);
+    const stopsNow = () => {
+      const max = ScrollTrigger.maxScroll(window);
+      const list = [];
+      secs.forEach((s) => {
+        const top = s.getBoundingClientRect().top + window.scrollY;
+        const h = s.offsetHeight, v = window.innerHeight;
+        if (h > v + 4) list.push(top, top + h - v); else list.push(top + (h - v) / 2);
+      });
+      return [...new Set(list.map((y) => Math.round(Math.max(0, Math.min(max, y)))))].sort((a, b) => a - b);
+    };
+    let animating = false, sy = null, sx = null;
+    const blocked = () => root.classList.contains('modal-open') || !!document.querySelector('.nav-links.open');
+    const onStart = (e) => { if (blocked()) { sy = null; return; } sy = e.touches[0].clientY; sx = e.touches[0].clientX; };
+    const onMove = (e) => {
+      if (sy === null) return;
+      const dy = sy - e.touches[0].clientY, dx = sx - e.touches[0].clientX;
+      if (Math.abs(dy) > Math.abs(dx) && e.cancelable) e.preventDefault();   // vertical: we handle it
+    };
+    const onEnd = (e) => {
+      if (sy === null || animating) { sy = null; return; }
+      const dy = sy - e.changedTouches[0].clientY, dx = sx - e.changedTouches[0].clientX;
+      sy = null;
+      if (Math.abs(dy) < 40 || Math.abs(dx) > Math.abs(dy)) return;
+      const stops = stopsNow(), y = window.scrollY;
+      const target = dy > 0 ? stops.find((s) => s > y + 4) : [...stops].reverse().find((s) => s < y - 4);
+      if (target === undefined) return;
+      animating = true;
+      setTimeout(() => { animating = false; }, 1600);
+      lenis.scrollTo(target, { duration: 0.95, easing: (x) => 1 - Math.pow(1 - x, 3), lock: true, force: true,
+        onComplete: () => { animating = false; } });
+    };
+    window.addEventListener('touchstart', onStart, { passive: true });
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd, { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', onStart);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+      gsap.ticker.remove(raf);
+      lenis.destroy();
+    };
+  }
+
   mm.add('(max-width: 900px)', () => {
+    const cleanupTouch = touchGlide('#hero, #services, #clientsSection, #process, #sections .band, #work, #about, #faq, #contact');
     const band = $('.band');
     if (band) {
       gsap.fromTo(band, { clipPath: 'inset(8% 6% 8% 6% round 28px)' }, { clipPath: 'inset(0% 0% 0% 0% round 0px)', ease: 'none',
@@ -395,6 +448,7 @@
       gsap.from(el, { scale: 1.3, opacity: 0.2, ease: 'none', transformOrigin: '50% 100%',
         scrollTrigger: { trigger: el, start: 'top 95%', end: 'top 55%', scrub: true } });
     });
+    return () => { if (cleanupTouch) cleanupTouch(); };
   });
 
   // any late layout change (fonts, media, the activation band growing to
