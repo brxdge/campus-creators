@@ -1178,4 +1178,4 @@ if (form && formMsg) {
     entries.forEach((e) => e.target.classList.toggle('is-offscreen', !e.isIntersecting));
   }, { rootMargin: '120px 0px' });
   secs.forEach((s) => io.observe(s));
-})();
+})(); 
