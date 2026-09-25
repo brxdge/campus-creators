@@ -237,7 +237,9 @@
   function setupReveal() {
     const els = document.querySelectorAll('.tal-reveal');
     if (!els.length) return;
-    if (reduceMotion || !('IntersectionObserver' in window)) {
+    // talents-motion.js drives the entrances with scroll — show everything
+    // in its final state and let the choreography animate the wrappers
+    if (reduceMotion || !('IntersectionObserver' in window) || document.documentElement.classList.contains('cc-choreo')) {
       els.forEach((el) => el.classList.add('in-view'));
       return;
     }
@@ -385,7 +387,7 @@
   // One-at-a-time also keeps the section within a single screen, so the
   // section-jump behaviour stays intact.
   function setupFaqAccordion() {
-    const items = Array.from(document.querySelectorAll('.tal-faq-item'));
+    const items = Array.from(document.querySelectorAll('.tal-faq-item, .tq-item'));
     const EASE = 'cubic-bezier(.22,1,.36,1)';
     function close(d) {
       const body = d.querySelector('p');
@@ -394,7 +396,7 @@
       const h = body.offsetHeight;
       body.style.overflow = 'hidden';
       body.animate(
-        [{ height: h + 'px', opacity: 1, marginBottom: '20px' }, { height: '0px', opacity: 0, marginBottom: '0px' }],
+        [{ height: h + 'px', opacity: 1, marginBottom: getComputedStyle(body).marginBottom }, { height: '0px', opacity: 0, marginBottom: '0px' }],
         { duration: 320, easing: EASE }
       ).onfinish = () => { d.open = false; body.style.overflow = ''; };
     }
@@ -405,7 +407,7 @@
       const h = body.offsetHeight;
       body.style.overflow = 'hidden';
       body.animate(
-        [{ height: '0px', opacity: 0, marginBottom: '0px' }, { height: h + 'px', opacity: 1, marginBottom: '20px' }],
+        [{ height: '0px', opacity: 0, marginBottom: '0px' }, { height: h + 'px', opacity: 1, marginBottom: getComputedStyle(body).marginBottom }],
         { duration: 420, easing: EASE }
       ).onfinish = () => { body.style.overflow = ''; };
     }

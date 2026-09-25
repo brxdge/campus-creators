@@ -82,7 +82,9 @@
     // ---------- Lenis smooth scroll, driven by GSAP's ticker ----------
     let lenis = null;
     if (typeof Lenis !== 'undefined') {
-      lenis = new Lenis({ duration: 1.15, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), smoothWheel: true });
+      // wheel input is handled by the section glide below (one gesture =
+      // one step); Lenis provides the smooth programmatic scrolling
+      lenis = new Lenis({ duration: 0.90, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), smoothWheel: false });
       lenis.on('scroll', ScrollTrigger.update);
       const raf = (time) => lenis.raf(time * 1000);
       gsap.ticker.add(raf);
@@ -196,7 +198,7 @@
     if (process) {
       const steps = $$('#howSteps .how-step');
       const tl = gsap.timeline({
-        scrollTrigger: { trigger: process, start: 'top top', end: () => '+=' + vh() * 1.6, pin: true, scrub: 0.6 },
+        scrollTrigger: { trigger: process, start: 'top top', end: () => '+=' + vh() * 1.6, pin: true, scrub: 0.3 },
       });
       tl.from('#process .sec-head h2', { yPercent: 70, scale: 1.25, ease: 'power2.out', duration: 1 }, 0)
         .from('#process .sec-head p', { opacity: 0, y: 30, duration: 0.5 }, 0.5);
@@ -262,7 +264,106 @@
         .from('#contact .site-footer', { yPercent: 25, opacity: 0, ease: 'none' }, 0.45);
     }
 
+    // ---------- one gesture = one glide to the next section ----------
+    // Every section (and each step inside the pinned ones) is a "stop".
+    // A wheel flick, arrow key or Page Down glides smoothly to the next
+    // stop and lands that section centred in the frame; the scroll
+    // animations above play out during the glide.
+    let cleanupGlide = null;
+    if (lenis) {
+      // (pinned sections get wrapped in a .pin-spacer, so match them by
+      // name rather than as direct children of #sections)
+      const secs = $$('#hero, #services, #clientsSection, #process, #sections .band, #work, #about, #faq, #contact');
+      let stops = [];
+      const buildStops = () => {
+        const max = ScrollTrigger.maxScroll(window);
+        const pins = ScrollTrigger.getAll().filter((t) => t.pin);
+        const list = [];
+        secs.forEach((sec) => {
+          const pin = pins.find((t) => t.trigger === sec);
+          if (pin && sec.id === 'services' && window.CCServices) {
+            const n = window.CCServices.count;
+            const len = pin.end - pin.start;
+            for (let i = 0; i < n; i++) list.push(pin.start + (i + 0.5) * (len / n));
+          } else if (pin && sec.id === 'process') {
+            list.push(pin.start, pin.end);
+          } else if (pin) {
+            list.push(pin.start);
+          } else {
+            const top = sec.getBoundingClientRect().top + window.scrollY;
+            const h = sec.offsetHeight;
+            if (h > vh() + 4) list.push(top, top + h - vh());    // taller than the screen: top, then bottom
+            else list.push(top + (h - vh()) / 2);                // centred in the frame
+          }
+        });
+        stops = Array.from(new Set(list.map((y) => Math.round(Math.max(0, Math.min(max, y)))))).sort((a, b) => a - b);
+      };
+      ScrollTrigger.addEventListener('refresh', buildStops);
+      requestAnimationFrame(buildStops);
+
+      let animating = false;
+      let failsafe = null;
+      // quick commit, soft landing: most of the distance is covered early,
+      // then it eases gently into place. Shorter hops (steps inside a
+      // pinned section) take less time than full-section moves.
+      const ease = (t) => 1 - Math.pow(1 - t, 4);
+      const durFor = (dist) => Math.min(0.95, Math.max(0.6, 0.5 + (dist / vh()) * 0.35));
+      const glideTo = (y) => {
+        animating = true;
+        clearTimeout(failsafe);
+        failsafe = setTimeout(() => { animating = false; }, 1300);
+        lenis.scrollTo(y, { duration: durFor(Math.abs(y - window.scrollY)), easing: ease, lock: true, force: true,
+          onComplete: () => { animating = false; clearTimeout(failsafe); } });
+      };
+      const step = (dir) => {
+        if (!stops.length) buildStops();
+        const y = window.scrollY;
+        const target = dir > 0 ? stops.find((s) => s > y + 4) : [...stops].reverse().find((s) => s < y - 4);
+        if (target !== undefined) glideTo(target);
+      };
+
+      // a trackpad flick fires a long tail of wheel events — the whole
+      // flick counts as ONE step; the next step needs a fresh gesture
+      let gestureLocked = false;
+      let releaseTimer = null;
+      const onWheel = (e) => {
+        if (root.classList.contains('modal-open') || e.ctrlKey) return;
+        e.preventDefault();
+        clearTimeout(releaseTimer);
+        releaseTimer = setTimeout(() => { gestureLocked = false; }, 180);
+        if (animating || gestureLocked || Math.abs(e.deltaY) < 4) return;
+        gestureLocked = true;
+        step(e.deltaY > 0 ? 1 : -1);
+      };
+      const onKey = (e) => {
+        if (root.classList.contains('modal-open')) return;
+        const tag = (document.activeElement && document.activeElement.tagName) || '';
+        if (/INPUT|TEXTAREA|SELECT/.test(tag)) return;
+        let dir = 0;
+        if (e.key === 'ArrowDown' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) dir = 1;
+        else if (e.key === 'ArrowUp' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) dir = -1;
+        else if (e.key === 'Home') { e.preventDefault(); glideTo(0); return; }
+        else if (e.key === 'End') { e.preventDefault(); glideTo(ScrollTrigger.maxScroll(window)); return; }
+        if (!dir) return;
+        e.preventDefault();
+        if (!animating) step(dir);
+      };
+      // FAQ answers change the page height — re-measure when one opens
+      const onToggle = () => setTimeout(() => ScrollTrigger.refresh(), 50);
+
+      window.addEventListener('wheel', onWheel, { passive: false });
+      window.addEventListener('keydown', onKey);
+      document.addEventListener('toggle', onToggle, true);
+      cleanupGlide = () => {
+        window.removeEventListener('wheel', onWheel);
+        window.removeEventListener('keydown', onKey);
+        document.removeEventListener('toggle', onToggle, true);
+        ScrollTrigger.removeEventListener('refresh', buildStops);
+      };
+    }
+
     return () => {
+      if (cleanupGlide) cleanupGlide();
       root.classList.remove('cc-choreo-desktop');
       $$('.cc-ghost').forEach((g) => g.remove());
       if (typeof cleanupSvc === 'function') cleanupSvc();
@@ -296,6 +397,21 @@
         scrollTrigger: { trigger: el, start: 'top 95%', end: 'top 55%', scrub: true } });
     });
   });
+
+  // any late layout change (fonts, media, the activation band growing to
+  // full height) shifts every section below it — re-measure so pins, scrubs
+  // and glide stops always line up with where things really are
+  if ('ResizeObserver' in window) {
+    const content = document.getElementById('sections');
+    let lastH = 0, t = null;
+    if (content) new ResizeObserver(() => {
+      const h = content.offsetHeight;
+      if (Math.abs(h - lastH) < 2) return;
+      lastH = h;
+      clearTimeout(t);
+      t = setTimeout(() => ScrollTrigger.refresh(), 150);
+    }).observe(content);
+  }
 
   // keep measurements right once fonts / late media settle
   window.addEventListener('load', () => ScrollTrigger.refresh());
