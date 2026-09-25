@@ -54,25 +54,40 @@
     }
 
     function assignClips() {
+      if (typeof resolveMedia !== 'function') return;
       const pool = collectVideoPool();
-      if (!pool.length) return;   // nothing uploaded yet — cards just show as static
       const photoPool = collectPhotoPool();
 
       steps.forEach((step, i) => {
-        const clip = pool[i % pool.length];   // cycle if fewer than 4 real clips exist
         const media = step.querySelector('.how-media');
         const poster = step.querySelector('.how-poster');
         const video = step.querySelector('.how-video');
-        if (!media || !poster || !video || typeof resolveMedia !== 'function') return;
+        if (!media || !poster || !video) return;
 
-        const posterSrc = clip.poster || fallbackPoster(clip.brand, photoPool);
-        if (posterSrc) poster.src = resolveMedia(posterSrc);
-        video.src = resolveMedia(clip.src);
+        // the step's own upload from the admin (How It Works -> Step N)
+        // always wins; the shared brand library is only a fallback for a
+        // step that has nothing uploaded yet
+        const own = typeof slotPick === 'function' ? slotPick('slot-how-' + (i + 1)) : null;
+        if (own && (own.video || own.poster)) {
+          if (own.poster) poster.src = own.poster;
+          else poster.removeAttribute('src');
+          if (own.video) { video.style.display = ''; if (video.getAttribute('src') !== own.video) video.src = own.video; }
+          else { video.pause(); video.removeAttribute('src'); video.style.display = 'none'; }
+        } else {
+          if (!pool.length) return;   // nothing uploaded anywhere yet — card stays static
+          const clip = pool[i % pool.length];
+          const posterSrc = clip.poster || fallbackPoster(clip.brand, photoPool);
+          if (posterSrc) poster.src = resolveMedia(posterSrc);
+          video.style.display = '';
+          video.src = resolveMedia(clip.src);
+        }
         // same hardening as every other video on the site — no native
         // Picture-in-Picture or remote-playback hover icons
         video.disablePictureInPicture = true;
         video.disableRemotePlayback = true;
 
+        if (step.dataset.hoverBound) return;
+        step.dataset.hoverBound = '1';
         let hoverTimer = null;
         step.addEventListener('mouseenter', () => {
           clearTimeout(hoverTimer);
