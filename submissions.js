@@ -66,10 +66,19 @@ module.exports = function submissions(opts = {}) {
     hits.set(ip, list);
     return list.length > 6;
   }
+  // forget old IPs so the map can't grow forever
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, list] of hits) if (!list.some((t) => now - t < 10 * 60 * 1000)) hits.delete(ip);
+  }, 5 * 60 * 1000).unref();
 
+  const MAX_STORED = 10000;   // disk-flood guard
+
+  // strip control characters (keep newlines/tabs in messages) and cap length
+  const strip = (x) => String(x).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim();
   function clean(v) {
-    if (Array.isArray(v)) return v.filter((x) => typeof x === 'string').map((x) => x.trim().slice(0, 200)).slice(0, 30);
-    if (typeof v === 'string' || typeof v === 'number') return String(v).trim().slice(0, 5000);
+    if (Array.isArray(v)) return v.filter((x) => typeof x === 'string').map((x) => strip(x).slice(0, 200)).filter(Boolean).slice(0, 30);
+    if (typeof v === 'string' || typeof v === 'number') return strip(v).slice(0, 5000);
     return '';
   }
 
@@ -78,14 +87,14 @@ module.exports = function submissions(opts = {}) {
   // ---------- public: receive a form ----------
   router.post('/api/submissions', json, async (req, res) => {
     const body = req.body || {};
-    const def = TYPES[body.type];
+    const def = Object.prototype.hasOwnProperty.call(TYPES, body.type) ? TYPES[body.type] : null;
     if (!def) return res.status(400).json({ error: 'Unknown form.' });
 
     // honeypot: real people never fill the hidden "website" field
     if (body.website) return res.json({ ok: true });
     if (limited(req.ip || 'unknown')) return res.status(429).json({ error: 'Too many submissions. Please try again later.' });
 
-    const input = body.fields || {};
+    const input = (body.fields && typeof body.fields === 'object') ? body.fields : {};
     const data = {};
     def.fields.forEach((k) => {
       const v = clean(input[k]);
@@ -93,7 +102,7 @@ module.exports = function submissions(opts = {}) {
     });
     const missing = def.required.filter((k) => !data[k]);
     if (missing.length) return res.status(400).json({ error: 'Please fill in all required fields.' });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) return res.status(400).json({ error: 'Please enter a valid email.' });
+    if (data.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) return res.status(400).json({ error: 'Please enter a valid email.' });
 
     const entry = {
       id: crypto.randomUUID(),
@@ -104,6 +113,7 @@ module.exports = function submissions(opts = {}) {
     };
     try {
       const list = readAll();
+      if (list.length >= MAX_STORED) return res.status(503).json({ error: 'We can\u2019t accept new messages right now. Please email us instead.' });
       list.unshift(entry);
       writeAll(list);
     } catch (err) {
@@ -141,12 +151,19 @@ module.exports = function submissions(opts = {}) {
   });
 
   router.get('/api/admin/submissions.csv', requireAdmin, (req, res) => {
-    const type = TYPES[req.query.type] ? req.query.type : 'brand';
+    const type = req.query.type === 'talent' ? 'talent' : 'brand';
     const cols = ['createdAt'].concat(TYPES[type].fields);
-    const esc = (v) => '"' + String(Array.isArray(v) ? v.join('; ') : (v == null ? '' : v)).replace(/"/g, '""') + '"';
+    // quote every cell, and neutralise spreadsheet formulas (=, +, -, @) so a
+    // submitted value can never run as a formula when the CSV is opened in Excel/Sheets
+    const esc = (v) => {
+      let t = String(Array.isArray(v) ? v.join('; ') : (v == null ? '' : v));
+      if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+      return '"' + t.replace(/"/g, '""') + '"';
+    };
     const rows = readAll().filter((s) => s.type === type)
       .map((s) => cols.map((c) => esc(c === 'createdAt' ? s.createdAt : s.data[c])).join(','));
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Content-Disposition', `attachment; filename="${type}-submissions.csv"`);
     res.send([cols.join(',')].concat(rows).join('\n'));
   });
