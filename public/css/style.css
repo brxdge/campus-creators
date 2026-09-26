@@ -3014,3 +3014,82 @@ html.ccc-active, html.ccc-active *{cursor:none !important;}
 .ccc[data-state="video"] .ccc-ripple{mix-blend-mode:normal;}
 .ccc[data-state="video"] .ccc-ripple::before{border-color:var(--red,#EB3F22);}
 @keyframes ccc-ripple{from{transform:scale(.5);opacity:.9;}to{transform:scale(2.6);opacity:0;}}
+
+/* ============================================================
+   Campus Activations band — student cut-outs, v3
+   A framed crowd shot: the three girls stand at the back, the group
+   crouches in front of them, all set against a soft disc + ring with
+   two twinkling brand stars. Sized by js/band-people.js so it never
+   touches the headline, paragraph or button. Enters from the right.
+   Geometry (H = composition height, width = 0.97H):
+     trio  : height .92H, left .34H   (back layer)
+     group : height .60H, left .14H   (front layer)
+   ============================================================ */
+.band-people{
+  --h:min(70vh, 40vw / .97, 900px);
+  position:absolute;z-index:2;bottom:0;
+  right:max(clamp(28px,3.4vw,64px), calc((100vw - 1680px) / 2 + clamp(28px,3.4vw,64px)));
+  height:var(--h);aspect-ratio:.97 / 1;pointer-events:none;
+}
+/* on very wide screens let it use the space outside the text column */
+@media (min-width:1800px){ .band-people{right:clamp(40px,3.4vw,90px);} }
+.bp-img{position:absolute;bottom:0;height:auto;display:block;user-select:none;will-change:transform,opacity,filter;}
+.bp-trio{left:35%;width:64.3%;bottom:4%;z-index:2;
+  filter:brightness(.9) saturate(.92) drop-shadow(0 20px 34px rgba(60,10,0,.28));}
+.bp-group{left:14.4%;width:85%;z-index:3;
+  filter:drop-shadow(0 -6px 30px rgba(60,10,0,.35)) drop-shadow(0 22px 34px rgba(60,10,0,.3));
+  /* soften the photo's straight cut edges (left, right, bottom) */
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 9%,#000 91%,transparent 100%),linear-gradient(to top,transparent 0,#000 12%);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(to right,transparent 0,#000 9%,#000 91%,transparent 100%),linear-gradient(to top,transparent 0,#000 12%);
+  mask-composite:intersect;}
+/* backdrop: soft disc + offset outline ring */
+.bp-disc{position:absolute;z-index:0;left:18%;bottom:14%;width:82%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,rgba(255,255,255,.22),rgba(255,255,255,.06) 62%,rgba(255,255,255,0) 72%);}
+.bp-ring{position:absolute;z-index:1;left:26%;bottom:22%;width:72%;aspect-ratio:1;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.4);}
+.bp-floor{position:absolute;z-index:1;left:4%;right:-2%;bottom:-5%;height:18%;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(60,10,0,.35),rgba(60,10,0,0));}
+.bp-spark{position:absolute;z-index:4;width:6.5%;height:auto;filter:drop-shadow(0 0 10px rgba(255,255,255,.7));}
+.bp-spark-a{left:24%;top:30%;}
+.bp-spark-b{right:-3%;top:6%;width:4.5%;}
+.band .band-inner{z-index:3;}
+
+/* ---- intro (enters from the right): disc & ring bloom, back row slides
+   in, front row overtakes it, stars pop last ---- */
+.band-people.bp-ready .bp-img,.band-people.bp-ready .bp-disc,.band-people.bp-ready .bp-ring,
+.band-people.bp-ready .bp-spark,.band-people.bp-ready .bp-floor{
+  transition:opacity .8s ease, transform 1.3s cubic-bezier(.16,1,.3,1), filter .9s ease;
+}
+.band-people.bp-ready .bp-disc{opacity:0;transform:translate3d(30%,0,0) scale(.6);}
+.band-people.bp-ready .bp-ring{opacity:0;transform:translate3d(40%,0,0) scale(.5) rotate(-40deg);}
+.band-people.bp-ready .bp-floor{opacity:0;transform:scaleX(.3);}
+.band-people.bp-ready .bp-trio{opacity:0;transform:translate3d(90%,0,0) skewX(-6deg);}
+.band-people.bp-ready .bp-group{opacity:0;transform:translate3d(120%,0,0) skewX(-8deg);}
+.band-people.bp-ready .bp-spark{opacity:0;transform:scale(0) rotate(-90deg);}
+
+.band-people.bp-in .bp-disc{opacity:1;transform:none;transition-delay:0s;}
+.band-people.bp-in .bp-ring{opacity:1;transform:none;transition-delay:.08s;}
+.band-people.bp-in .bp-floor{opacity:1;transform:none;transition-delay:.35s;}
+.band-people.bp-in .bp-trio{opacity:1;transform:translate3d(var(--px2,0),0,0);transition-delay:.12s;}
+.band-people.bp-in .bp-group{opacity:1;transform:translate3d(var(--px1,0),0,0);transition-delay:.34s;}
+.band-people.bp-in .bp-spark{opacity:1;transform:none;transition-delay:.95s;}
+.band-people.bp-live .bp-img{transition:transform .7s cubic-bezier(.16,1,.3,1);transition-delay:0s;}
+.band-people.bp-live .bp-ring{animation:bp-ring 18s linear infinite;}
+.band-people.bp-live .bp-spark{animation:bp-twinkle 2.8s ease-in-out infinite;}
+.band-people.bp-live .bp-spark-b{animation-delay:-1.4s;}
+@keyframes bp-twinkle{0%,100%{transform:scale(1) rotate(0);opacity:1;}50%{transform:scale(.55) rotate(45deg);opacity:.6;}}
+@keyframes bp-ring{from{transform:rotate(0) translateX(0);}50%{transform:rotate(180deg) translateX(1.5%);}to{transform:rotate(360deg) translateX(0);}}
+
+/* phones / narrow: under the text, centred */
+@media (max-width:900px){
+  .band{flex-direction:column;justify-content:space-between;}
+  .band .band-inner{order:1;}
+  .band-people{order:2;position:relative;right:auto;bottom:auto;height:auto;
+    width:min(92%,460px);align-self:center;margin:24px auto -40px;aspect-ratio:.97 / 1;}
+  .band:not(.cc-choreo .band) .band-people{margin-bottom:-70px;}
+}
+@media (prefers-reduced-motion: reduce){
+  .band-people .bp-img,.band-people .bp-disc,.band-people .bp-ring,.band-people .bp-spark,.band-people .bp-floor{
+    opacity:1 !important;transform:none !important;transition:none !important;animation:none !important;}
+}
