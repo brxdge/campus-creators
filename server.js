@@ -222,6 +222,10 @@ app.use(submissions({ requireAdmin, dataDir: DATA_DIR }));
 const roster = require('./roster');
 app.use(roster({ requireAdmin, dataDir: DATA_DIR }));
 
+// ---- The Work case studies (Brands page) --------------------------------------
+const cases = require('./cases');
+app.use(cases({ requireAdmin, dataDir: DATA_DIR }));
+
 // ---- static ----------------------------------------------------------------
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, filePath) => {
