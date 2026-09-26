@@ -428,7 +428,7 @@
       } else if (k === 'email') {
         const a = el('a'); a.href = 'mailto:' + v; a.textContent = v; dd.appendChild(a);
       } else if (/^https?:\/\//i.test(v)) {
-        const a = el('a'); a.href = v; a.target = '_blank'; a.rel = 'noopener'; a.textContent = v; dd.appendChild(a);
+        const a = el('a'); a.href = v; a.target = '_blank'; a.rel = 'noopener noreferrer nofollow'; a.textContent = v; dd.appendChild(a);
       } else {
         dd.textContent = v;
       }
