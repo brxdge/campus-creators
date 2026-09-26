@@ -104,13 +104,14 @@ function mediaFor(brand) {
 // most columns fit across the viewport simultaneously on a wide screen —
 // that's 10 concurrent video decodes running continuously just from sitting
 // on the homepage, which is the main thing making the page feel heavy.
-const MAX_HERO_VIDEOS = 3;
+const MAX_HERO_VIDEOS = window.matchMedia('(max-width: 900px)').matches ? 2 : 8;
 
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const saveData = navigator.connection && navigator.connection.saveData;
 const smallScreen = window.matchMedia('(max-width: 900px)').matches;
-// no hero video on phones, on metered connections, or if motion is reduced
-const allowHeroVideo = !prefersReducedMotion && !saveData && !smallScreen;
+// hero video is a priority: on everywhere except data-saver / reduced motion
+// (phones get a smaller budget via MAX_HERO_VIDEOS)
+const allowHeroVideo = !prefersReducedMotion && !saveData;
 
 // pause anything scrolled out of view
 const heroVideoObserver = ('IntersectionObserver' in window)
@@ -141,8 +142,13 @@ function hydrateHeroMedia() {
     // halves, or the content visibly changes every time the loop wraps.
     const half = Math.floor(reels.length / 2);
 
-    // one video per column, at a staggered height so they don't line up
-    const videoSlot = half ? (colIndex * 2) % half : -1;
+    // one video per column: the first card (from a staggered starting
+    // point, so they don't line up) whose brand actually has a video
+    let videoSlot = -1;
+    for (let k = 0; k < half; k++) {
+      const j = (colIndex * 2 + k) % half;
+      if (mediaFor(reels[j].dataset.brand).videos.length) { videoSlot = j; break; }
+    }
 
     for (let j = 0; j < half; j++) {
       const reel = reels[j];
@@ -161,7 +167,7 @@ function hydrateHeroMedia() {
       if (useVideo) {
         const n = videoCounters[brand] = (videoCounters[brand] || 0);
         videoCounters[brand] = n + 1;
-        node = makeVideo(videos[n % videos.length]);
+        node = makeVideo(videos[n % videos.length], photos[0]);
         videosPlaced++;
       } else if (photos.length) {
         const n = photoCounters[brand] = (photoCounters[brand] || 0);
@@ -187,14 +193,18 @@ function makePhoto(src) {
   return img;
 }
 
-function makeVideo(clip) {
+function makeVideo(clip, fallbackPoster) {
   const v = document.createElement('video');
   v.src = resolveMedia(clip.src);
-  if (clip.poster) v.poster = resolveMedia(clip.poster);
+  // a poster frame shows instantly, so the card is never blank while the
+  // clip loads (brand photo if the clip has no poster of its own)
+  const poster = clip.poster || fallbackPoster;
+  if (poster) v.poster = resolveMedia(poster);
   v.muted = true;
   v.loop = true;
   v.playsInline = true;
-  v.preload = 'none';                     // nothing downloads until it's visible
+  v.preload = 'metadata';                 // first frame ready fast; full clip streams once playing
+  v.autoplay = true;
   v.setAttribute('aria-hidden', 'true');
   return v;
 }
@@ -1108,6 +1118,7 @@ if (navLinks) {
     document.getElementById('openContactModal'),
     document.getElementById('openContactModalFooter'),
     document.getElementById('openContactModalHero'),
+    document.getElementById('openContactModalNav'),
   ].filter(Boolean);
   if (!modal || !openers.length) return;
 
@@ -1178,4 +1189,4 @@ if (form && formMsg) {
     entries.forEach((e) => e.target.classList.toggle('is-offscreen', !e.isIntersecting));
   }, { rootMargin: '120px 0px' });
   secs.forEach((s) => io.observe(s));
-})(); 
+})();

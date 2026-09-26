@@ -52,12 +52,10 @@
     },
     work: {
       title: 'The Work', crumb: 'Brands page',
-      desc: 'Cover media for each case study card. Videos autoplay muted on the card.',
+      desc: 'Add case studies with a title, status, short description and a cover photo or video. The Work section stays hidden on the site until at least one case study is published.',
       ratio: '16/10',
       slots: [
-        ['slot-work-1', 'Case 01: Beverage launch'],
-        ['slot-work-2', 'Case 02: Ambassador program'],
-        ['slot-work-3', 'Case 03: Campus activation'],
+
       ],
     },
     roster: {
@@ -211,6 +209,17 @@
     });
   }
 
+  let cases = null;             // null = case studies not available on the server
+  async function loadCases() {
+    try {
+      const data = await api('/api/admin/cases');
+      cases = data.cases || [];
+      GROUPS.work.slots = cases.map((c) => ['slot-work-' + c.id, c.title]);
+    } catch (e) {
+      cases = null;
+    }
+  }
+
   async function loadRoster() {
     try {
       const data = await api('/api/admin/roster');
@@ -224,7 +233,7 @@
   async function load() {
     view.innerHTML = '<p class="loading">Loading…</p>';
     try {
-      const [data] = await Promise.all([api('/api/admin/brands'), loadSubmissions(), loadRoster()]);
+      const [data] = await Promise.all([api('/api/admin/brands'), loadSubmissions(), loadRoster(), loadCases()]);
       brands = data.brands || [];
       render();
     } catch (err) {
@@ -239,6 +248,13 @@
     else if (current === 'brands') renderBrands();
     else if (VIEWS[current].inbox) renderInbox(VIEWS[current].inbox);
     else if (current === 'roster' && ambassadors) renderRoster();
+    else if (current === 'work' && cases) renderCases();
+    else if (current === 'roster') {
+      view.appendChild(el('div', 'notice', `<h3>Add / edit / delete isn't available yet</h3>
+        <p>The server hasn't loaded <code>roster.js</code>. Put <code>roster.js</code> and the new <code>server.js</code> in the main project folder, then restart the server (or push to GitHub for the live site).</p>`));
+      view.lastChild.style.marginBottom = '20px';
+      renderSlots(GROUPS[current]);
+    }
     else renderSlots(GROUPS[current]);
   }
 
@@ -572,6 +588,101 @@
       onSubmit(data);
     });
     return f;
+  }
+
+  // ---------- The Work: case studies (add / edit / publish / delete) ----------
+  function caseForm(values, submitLabel, onSubmit, onCancel) {
+    const f = el('form', 'amb-form case-form');
+    f.innerHTML = `
+      <input type="text" name="title" placeholder="Title (e.g. Beverage launch)" maxlength="80" required>
+      <input type="text" name="flag" placeholder="Status label (e.g. Case study, In progress)" maxlength="40">
+      <textarea name="desc" placeholder="Short description or results (one or two lines)" maxlength="400" rows="3"></textarea>
+      <label class="case-pub"><input type="checkbox" name="published"> Published (show on the site)</label>
+      <div class="amb-form-actions">
+        <button class="btn small" type="submit"></button>
+        <button class="btn ghost small" type="button" data-cancel>Cancel</button>
+      </div>`;
+    f.elements.title.value = values.title || '';
+    f.elements.flag.value = values.flag || '';
+    f.elements.desc.value = values.desc || '';
+    f.elements.published.checked = !!values.published;
+    f.querySelector('[type=submit]').textContent = submitLabel;
+    f.querySelector('[data-cancel]').addEventListener('click', onCancel);
+    f.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = {
+        title: f.elements.title.value.trim(), flag: f.elements.flag.value.trim(),
+        desc: f.elements.desc.value.trim(), published: f.elements.published.checked,
+      };
+      if (!data.title) return;
+      onSubmit(data);
+    });
+    return f;
+  }
+
+  function renderCases() {
+    const live = cases.filter((c) => c.published).length;
+    const bar = el('div', 'amb-bar');
+    bar.innerHTML = `<button class="btn small" type="button">+ Add case study</button>
+      <span class="amb-count">${cases.length} case stud${cases.length === 1 ? 'y' : 'ies'} · ${live} published${live ? '' : ' (section hidden on the site)'}</span>`;
+    view.appendChild(bar);
+    const addWrap = el('div', 'amb-add');
+    addWrap.hidden = true;
+    addWrap.appendChild(caseForm({ flag: 'Case study' }, 'Add case study', async (data) => {
+      try {
+        await api('/api/admin/cases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        toast(`"${data.title}" added. Upload its cover below.`);
+        load();
+      } catch (err) { toast(err.message, true); }
+    }, () => { addWrap.hidden = true; }));
+    bar.querySelector('button').addEventListener('click', () => {
+      addWrap.hidden = !addWrap.hidden;
+      if (!addWrap.hidden) addWrap.querySelector('input').focus();
+    });
+    view.appendChild(addWrap);
+
+    if (!cases.length) { view.appendChild(el('p', 'empty', 'No case studies yet. Add one above.')); return; }
+
+    const grid = el('div', 'slot-grid');
+    cases.forEach((c, i) => {
+      const card = slotCard('slot-work-' + c.id, c.title, i, GROUPS.work.ratio);
+      const pill = card.querySelector('.pill');
+      const pub = el('span', 'pill ' + (c.published ? 'video' : 'empty'));
+      pub.textContent = c.published ? 'Published' : 'Draft';
+      pill.after(pub);
+      const sub = el('p', 'amb-sub');
+      sub.textContent = [c.flag, c.desc].filter(Boolean).join(' · ') || 'No description yet';
+      card.querySelector('.slot-meta').after(sub);
+      const actions = el('div', 'amb-actions');
+      actions.innerHTML = '<button class="btn ghost small" type="button" data-edit>Edit</button>' +
+        `<button class="btn ghost small" type="button" data-pub>${c.published ? 'Unpublish' : 'Publish'}</button>` +
+        '<button class="amb-del" type="button" data-del>Delete</button>';
+      sub.after(actions);
+      const patch = async (data, msg) => {
+        try {
+          await api('/api/admin/cases/' + c.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+          toast(msg); load();
+        } catch (err) { toast(err.message, true); }
+      };
+      actions.querySelector('[data-pub]').addEventListener('click', () => patch({ published: !c.published }, c.published ? 'Unpublished.' : 'Published. It now shows on the site.'));
+      actions.querySelector('[data-edit]').addEventListener('click', () => {
+        actions.hidden = true;
+        const form = caseForm(c, 'Save', (data) => patch(data, 'Saved.'), () => { form.remove(); actions.hidden = false; });
+        actions.after(form);
+        form.querySelector('input').focus();
+      });
+      actions.querySelector('[data-del]').addEventListener('click', async () => {
+        if (!confirm(`Delete "${c.title}" and its uploaded media? This cannot be undone.`)) return;
+        try {
+          await api('/api/admin/cases/' + c.id, { method: 'DELETE' });
+          const slot = brandByName('slot-work-' + c.id);
+          if (slot) await api('/api/admin/brands/' + slot.id, { method: 'DELETE' }).catch(() => {});
+          toast('Deleted.'); load();
+        } catch (err) { toast(err.message, true); }
+      });
+      grid.appendChild(card);
+    });
+    view.appendChild(grid);
   }
 
   function renderRoster() {

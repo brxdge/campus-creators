@@ -263,6 +263,7 @@
         const listIds = [];
         const push = list.push.bind(list);
         secs.forEach((sec) => {
+          if (!sec.offsetHeight) return;          // hidden section (e.g. The Work before it's published)
           list.push = (...ys) => { ys.forEach(() => listIds.push(sec.id || 'band')); return push(...ys); };
           const pin = pins.find((t) => t.trigger === sec);
           if (pin && sec.id === 'process') {

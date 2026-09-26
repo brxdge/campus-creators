@@ -11,7 +11,29 @@
 // line runs under the active tab), pauses while you hover the screen or
 // the tabs, and arrows / tabs / swipe all jump directly.
 // ============================================================
-(function workShowcase() {
+// The section is hidden until the admin publishes at least one case study
+// (admin -> The Work). Cases come from /api/cases; each case's cover comes
+// from its own upload slot (slot-work-<id>).
+(function loadWork() {
+  const section = document.getElementById('work');
+  if (!section) return;
+  const setVisible = (on) => {
+    section.hidden = !on;
+    document.documentElement.classList.toggle('has-work', on);
+    if (typeof ScrollTrigger !== 'undefined') setTimeout(() => ScrollTrigger.refresh(), 60);
+  };
+  fetch('/api/cases', { headers: { Accept: 'application/json' } })
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((d) => {
+      const list = (d && Array.isArray(d.cases)) ? d.cases : [];
+      if (!list.length) { setVisible(false); return; }
+      setVisible(true);
+      workShowcase(list);
+    })
+    .catch(() => setVisible(false));
+})();
+
+function workShowcase(CASES) {
   const section = document.getElementById('work');
   const slidesEl = document.getElementById('wkSlides');
   const copyEl = document.getElementById('wkCopy');
@@ -19,11 +41,6 @@
   const screen = document.getElementById('wkScreen');
   if (!section || !slidesEl || !copyEl || !tabsEl || !screen) return;
 
-  const CASES = [
-    { flag: 'In progress', title: 'Beverage launch', desc: 'Write-up and results coming soon.' },
-    { flag: 'In progress', title: 'Ambassador program', desc: 'Write-up and results coming soon.' },
-    { flag: 'In progress', title: 'Campus activation', desc: 'Write-up and results coming soon.' },
-  ];
   const TONES = [1, 3, 5];
   const GLOW = { 1: '#2E2E33', 3: '#223140', 5: '#4A1D14' };
   const DURATION = 7000;
@@ -81,7 +98,7 @@
 
   // ---------- media ----------
   function pickMedia(i) {
-    const own = typeof slotPick === 'function' ? slotPick('slot-work-' + (i + 1)) : { video: '', poster: '' };
+    const own = typeof slotPick === 'function' ? slotPick('slot-work-' + (CASES[i].id || i + 1)) : { video: '', poster: '' };
     if (own.video || own.poster) return own;
     // stand-in from the brand library, offset so each case looks different
     if (typeof MEDIA_DATA === 'undefined' || typeof resolveMedia !== 'function') return { video: '', poster: '' };
@@ -233,4 +250,4 @@
   section.style.setProperty('--work-glow', GLOW[TONES[0]]);
   applyMedia();
   document.addEventListener('mediaDataReady', applyMedia);
-})();
+}
