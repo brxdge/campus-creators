@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Arimo:wght@700;800&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=142">
+<link rel="stylesheet" href="css/style.css?v=145">
 </head>
 <body class="brands-body">
 
@@ -32,12 +32,12 @@
     <a href="#top" class="nav-logo"><img src="assets/campus-creators-logo.png" alt="Campus Creators"></a>
     <div class="nav-links" id="navLinks">
       <div class="nav-side nav-left">
-        <a href="#work">Brands</a>
+        <a href="#top">Brands</a>
         <a href="talents.html">Talents</a>
       </div>
       <div class="nav-side nav-right">
-        <a href="#contact">Contact Us</a>
         <a href="#about">About Us</a>
+        <a href="#contact" class="nav-cta" id="openContactModalNav"><span class="nav-cta-label">Book a call</span><span class="nav-cta-arrow" aria-hidden="true">&#8594;</span></a>
       </div>
     </div>
   </nav>
@@ -166,9 +166,6 @@
           </span>
         </span>
       </h1>
-      <div class="hero-actions">
-        <a href="#contact" class="btn hero-btn" id="openContactModalHero">Book a call <span aria-hidden="true">&#8594;</span></a>
-      </div>
     </div>
   </section>
 
@@ -380,12 +377,12 @@
   </div>
 
   <!-- WORK -->
-  <section class="sec sec-dark wk-sec" id="work">
+  <section class="sec sec-dark wk-sec" id="work" hidden>
     <div class="wrap enter-fade">
       <div class="wk-head">
         <div class="wk-head-copy">
           <h2>The<img class="how-star" src="assets/star.png" alt="" aria-hidden="true">work</h2>
-          <p>Campaign write-ups go here as we finish pulling the results together.</p>
+          <p>Selected campaigns we've run with brands on campus.</p>
         </div>
         <div class="wk-nav">
           <span class="wk-counter"><b id="wkCur">01</b><i aria-hidden="true"></i><span id="wkTotal">03</span></span>
@@ -463,7 +460,7 @@
         <span class="contact-cta-arrow" aria-hidden="true">&rarr;</span>
       </a>
       <div class="student-note">
-        Are you a student? Our Creators page is <a href="#">launching soon</a>.
+        Are you a student? <a href="talents.html">Join as a creator &#8594;</a>
       </div>
     </div>
     <!-- footer content lives inside this same section now, sharing the
@@ -562,14 +559,14 @@
 </div>
 
 <script src="js/loader.js?v=6"></script>
-<script src="js/main.js?v=59"></script>
-<script src="js/work-showcase.js?v=3"></script>
+<script src="js/main.js?v=61"></script>
+<script src="js/work-showcase.js?v=4"></script>
 <script src="js/services-showcase.js?v=6"></script>
 <script src="js/how-it-works.js?v=9"></script>
 <script src="js/vendor/gsap.min.js?v=3.15.0"></script>
 <script src="js/vendor/ScrollTrigger.min.js?v=3.15.0"></script>
 <script src="js/vendor/lenis.min.js?v=1.3.26"></script>
 <script src="js/about-wipe.js?v=5"></script>
-<script src="js/brands-motion.js?v=13"></script>
+<script src="js/brands-motion.js?v=14"></script>
 </body>
 </html>
