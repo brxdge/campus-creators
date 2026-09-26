@@ -2893,3 +2893,43 @@ html.lenis{scroll-behavior:auto !important;}
   .brands-body .clients{padding-top:72px;}
   .brands-body .showcase-track .phone.is-center{flex-basis:clamp(120px,19vh,206px);}
 }
+
+
+/* ---------- The Work: hidden until a case study is published ---------- */
+#work[hidden]{display:none !important;}
+html:not(.has-work) .about a[href="#work"],
+html:not(.has-work) .site-footer a[href="#work"]{display:none;}
+
+/* ---------- nav call-to-action pill (Book a call / Apply now) ---------- */
+.nav-side a.nav-cta{
+  position:relative;overflow:hidden;isolation:isolate;display:inline-flex;align-items:center;gap:10px;
+  padding:11px 20px;border-radius:100px;border:1px solid var(--red);border-bottom-width:1px;
+  background:var(--red);color:#fff;text-shadow:none;letter-spacing:1.2px;
+  box-shadow:0 8px 26px -8px rgba(235,63,34,.75);
+  animation:navCtaGlow 3.2s ease-in-out infinite;
+  transition:transform .35s cubic-bezier(.22,1,.36,1),background .25s,color .25s,box-shadow .35s;
+}
+.nav-side a.nav-cta::before{
+  content:'';position:absolute;top:0;bottom:0;left:-70%;width:45%;z-index:-1;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);
+  transform:skewX(-20deg);animation:navCtaShine 3.6s ease-in-out infinite;
+}
+.nav-cta-arrow{display:inline-block;transition:transform .35s cubic-bezier(.22,1,.36,1);}
+.nav-side a.nav-cta:hover{background:#fff;border-color:#fff;color:var(--ink);transform:translateY(-2px) scale(1.04);box-shadow:0 14px 34px -10px rgba(255,255,255,.45);}
+.nav-side a.nav-cta:hover .nav-cta-arrow{transform:translateX(5px);}
+@keyframes navCtaShine{0%,60%{left:-70%;}100%{left:140%;}}
+@keyframes navCtaGlow{0%,100%{box-shadow:0 8px 26px -8px rgba(235,63,34,.75);}50%{box-shadow:0 8px 34px -4px rgba(235,63,34,.95);}}
+@media (max-width:900px){
+  .nav-side a.nav-cta{justify-content:center;margin:10px 0 4px;border-bottom:1px solid var(--red);padding:14px 20px;}
+}
+@media (prefers-reduced-motion: reduce){
+  .nav-side a.nav-cta,.nav-side a.nav-cta::before{animation:none;}
+}
+
+/* HERO — headline smaller, sitting in the lower middle; no button */
+.brands-body .hero{align-items:flex-end;padding-bottom:clamp(40px,7vh,80px) !important;}
+.brands-body .hero h1{font-size:clamp(34px,min(4.6vw,8vh),92px);line-height:.92;}
+@media (max-width:760px){
+  .brands-body #sections > .hero{justify-content:flex-end;padding-bottom:clamp(40px,7vh,70px) !important;}
+  .brands-body .hero h1{font-size:clamp(28px,8.2vw,38px);}
+}

@@ -266,3 +266,9 @@ input:focus{border-color:var(--red);outline:none;}
 .amb-del{background:none;border:0;color:rgba(255,255,255,.45);font:600 13px var(--body);cursor:pointer;padding:6px 8px;margin-left:auto;}
 .amb-del:hover{color:var(--red);}
 @media (max-width:640px){ .amb-form{grid-template-columns:1fr;} }
+
+.case-form textarea{grid-column:1 / -1;font:inherit;font-size:14px;padding:10px 12px;border-radius:9px;border:1.5px solid var(--line);background:var(--surface);color:#fff;resize:vertical;}
+.case-form textarea:focus{border-color:var(--red);outline:none;}
+.case-pub{grid-column:1 / -1;display:flex;align-items:center;gap:8px;font-size:13.5px;color:rgba(255,255,255,.75);}
+.case-pub input{accent-color:var(--red);width:16px;height:16px;}
+.slot-meta .pill + .pill{margin-left:6px;}
