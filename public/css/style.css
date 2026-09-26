@@ -2933,3 +2933,84 @@ html:not(.has-work) .site-footer a[href="#work"]{display:none;}
   .brands-body #sections > .hero{justify-content:flex-end;padding-bottom:clamp(40px,7vh,70px) !important;}
   .brands-body .hero h1{font-size:clamp(28px,8.2vw,38px);}
 }
+
+/* ============================================================
+   Custom cursor (js/cursor.js) — mouse devices only
+   ============================================================ */
+/* normal arrow everywhere; the native cursor only hides while the custom
+   one is showing (over clickables and photo->video cards) */
+html.ccc-active, html.ccc-active *{cursor:none !important;}
+
+/* wrapper must NOT form a stacking context, or the blend can't see the page */
+.ccc{position:static;}
+.ccc-dot,.ccc-ring,.ccc-ripple{
+  position:fixed;left:0;top:0;width:0;height:0;pointer-events:none;z-index:2147483000;
+  will-change:transform;mix-blend-mode:difference;opacity:0;transition:opacity .25s ease;
+}
+.ccc.ccc-show[data-state="link"] .ccc-ring,.ccc.ccc-show[data-state="video"] .ccc-ring,.ccc-ripple{opacity:1;}
+/* idle: ring shrunk to nothing, so it grows out of the arrow when it activates */
+.ccc:not([data-state="link"]):not([data-state="video"]) .ccc-ring::before{transform:translate(-50%,-50%) scale(0);}
+
+.ccc-dot::before{
+  content:"";position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;
+  background:#fff;
+  transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .2s ease;
+}
+.ccc-ring::before{
+  content:"";position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;
+  transform:translate(-50%,-50%) scale(1);
+  border:1.5px solid rgba(255,255,255,.85);background:transparent;
+  transition:transform .45s cubic-bezier(.2,.8,.2,1),background-color .3s ease,border-color .3s ease,width .45s cubic-bezier(.2,.8,.2,1),height .45s cubic-bezier(.2,.8,.2,1);
+}
+
+/* 1) clickable text / buttons: swell + invert what's beneath */
+.ccc[data-state="link"] .ccc-ring::before{
+  width:64px;height:64px;background:#fff;border-color:#fff;
+  animation:ccc-breathe 1.6s ease-in-out infinite;
+}
+.ccc[data-state="link"] .ccc-dot::before{transform:scale(0);opacity:0;}
+@keyframes ccc-breathe{
+  0%,100%{transform:translate(-50%,-50%) scale(1);}
+  50%{transform:translate(-50%,-50%) scale(1.08);}
+}
+
+/* 2) photo -> video: red disc, spinning PLAY text, play icon -> equaliser */
+.ccc[data-state="video"] .ccc-ring{mix-blend-mode:normal;}
+.ccc[data-state="video"] .ccc-ring::before{
+  width:104px;height:104px;background:var(--red,#EB3F22);border-color:transparent;
+  box-shadow:0 10px 40px rgba(235,63,34,.45);
+}
+.ccc[data-state="video"] .ccc-dot::before{transform:scale(0);opacity:0;}
+.ccc-spin,.ccc-play,.ccc-eq{position:absolute;left:0;top:0;opacity:0;transition:opacity .25s ease,transform .45s cubic-bezier(.2,.8,.2,1);}
+.ccc-spin{
+  width:104px;height:104px;margin:-52px 0 0 -52px;transform:scale(.6) rotate(0deg);
+  fill:#fff;font:700 9.5px/1 "Work Sans",system-ui,sans-serif;letter-spacing:1px;
+}
+.ccc[data-state="video"] .ccc-spin{opacity:1;transform:scale(1);animation:ccc-spin 7s linear infinite;}
+@keyframes ccc-spin{to{transform:scale(1) rotate(360deg);}}
+.ccc-play{
+  width:0;height:0;margin:-9px 0 0 -6px;
+  border-left:17px solid #fff;border-top:9px solid transparent;border-bottom:9px solid transparent;
+  transform:scale(.4);
+}
+.ccc[data-state="video"]:not(.ccc-playing) .ccc-play{opacity:1;transform:scale(1);}
+.ccc-eq{display:flex;align-items:flex-end;gap:3px;height:18px;margin:-9px 0 0 -10.5px;transform:scale(.4);}
+.ccc-eq i{display:block;width:3px;height:100%;background:#fff;border-radius:2px;transform-origin:bottom;animation:ccc-eq .9s ease-in-out infinite;}
+.ccc-eq i:nth-child(2){animation-delay:-.3s;}
+.ccc-eq i:nth-child(3){animation-delay:-.6s;}
+.ccc-eq i:nth-child(4){animation-delay:-.15s;}
+@keyframes ccc-eq{0%,100%{transform:scaleY(.25);}50%{transform:scaleY(1);}}
+.ccc[data-state="video"].ccc-playing .ccc-eq{opacity:1;transform:scale(1);}
+
+/* text fields: hide the custom cursor, native I-beam shows instead */
+
+
+/* click: squeeze + ripple */
+.ccc.ccc-down .ccc-ring::before{transform:translate(-50%,-50%) scale(.82);animation:none;}
+.ccc-ripple::before{
+  content:"";position:absolute;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;
+  border:1.5px solid #fff;animation:ccc-ripple .6s cubic-bezier(.2,.8,.2,1) forwards;
+}
+.ccc[data-state="video"] .ccc-ripple{mix-blend-mode:normal;}
+.ccc[data-state="video"] .ccc-ripple::before{border-color:var(--red,#EB3F22);}
+@keyframes ccc-ripple{from{transform:scale(.5);opacity:.9;}to{transform:scale(2.6);opacity:0;}}
