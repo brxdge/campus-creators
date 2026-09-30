@@ -28,7 +28,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Arimo:wght@700;800&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=150">
+<link rel="stylesheet" href="css/style.css?v=155">
 </head>
 <body class="brands-body">
 
@@ -483,13 +483,16 @@
   <section class="sec sec-dark contact-cta" id="contact" style="padding-top:0;">
     <video class="contact-video" id="contactVideo" muted loop playsinline preload="none" aria-hidden="true"></video>
     <div class="contact-overlay" aria-hidden="true"></div>
-    <div class="wrap contact-cta-inner">
+    <div class="wrap contact-cta-inner cc-min">
       <a href="#" class="contact-cta-link" id="openContactModal">
-        Get in touch
+        <span class="cc-cta-text">Get in touch</span>
         <span class="contact-cta-arrow" aria-hidden="true">&rarr;</span>
       </a>
-      <div class="student-note">
-        Are you a student? <a href="/talents">Join as a creator &#8594;</a>
+      <p class="cc-sub">Tell us what you're launching. We'll bring the creators, ambassadors and events.</p>
+      <div class="cc-actions">
+        <a href="#" class="cc-link" id="openContactModalHero">Book a call</a>
+        <span class="cc-sep" aria-hidden="true"></span>
+        <a href="/talents" class="cc-link cc-link-muted">Students, join as a creator</a>
       </div>
     </div>
     <!-- footer content lives inside this same section now, sharing the
@@ -539,22 +542,22 @@
 <!-- Contact form modal — opened by the "Get in touch" CTA -->
 <div class="contact-modal" id="contactModal" aria-hidden="true">
   <div class="contact-modal-backdrop" id="contactModalBackdrop"></div>
-  <div class="contact-modal-panel" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
+  <div class="contact-modal-panel" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle" data-lenis-prevent>
     <button type="button" class="contact-modal-close" id="contactModalClose" aria-label="Close">&times;</button>
     <h2 id="contactModalTitle">Get your brand on campus</h2>
     <p>Tell us what you're launching and we'll come back with the right mix of creators, ambassadors, and events.</p>
     <form id="contactForm" novalidate>
       <div class="form-row">
-        <div class="field"><label for="firstName">First name *</label><input id="firstName" name="firstName" required></div>
-        <div class="field"><label for="lastName">Last name</label><input id="lastName" name="lastName"></div>
+        <div class="field"><label for="firstName">First name *</label><input id="firstName" name="firstName" autocomplete="given-name" maxlength="60" required></div>
+        <div class="field"><label for="lastName">Last name</label><input id="lastName" name="lastName" autocomplete="family-name" maxlength="60"></div>
       </div>
       <div class="form-row">
-        <div class="field"><label for="email">Email *</label><input id="email" name="email" type="email" required></div>
-        <div class="field"><label for="phone">Phone</label><input id="phone" name="phone" type="tel"></div>
+        <div class="field"><label for="email">Email *</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" required></div>
+        <div class="field"><label for="phone">Phone</label><input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="30"></div>
       </div>
       <div class="form-row">
-        <div class="field"><label for="company">Company *</label><input id="company" name="company" required></div>
-        <div class="field"><label for="social">Website or social link</label><input id="social" name="social"></div>
+        <div class="field"><label for="company">Company *</label><input id="company" name="company" autocomplete="organization" maxlength="100" required></div>
+        <div class="field"><label for="social">Website or social link</label><input id="social" name="social" maxlength="200" placeholder="yourbrand.com or @handle"></div>
       </div>
       <div class="form-row">
         <div class="field">
@@ -579,16 +582,22 @@
           </select>
         </div>
       </div>
-      <div class="field full" style="margin-bottom:18px;"><label for="message">What are you launching? *</label><textarea id="message" name="message" required></textarea></div>
-      <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp-field">
+      <div class="field full" style="margin-bottom:18px;"><label for="message">What are you launching? *</label><textarea id="message" name="message" maxlength="3000" placeholder="The product, the schools you want to reach, and anything else we should know." required></textarea></div>
+      <div class="hp-wrap" aria-hidden="true"><label>Leave this empty<input type="text" name="cc_hp" tabindex="-1" autocomplete="new-password"></label></div>
       <button type="submit" class="btn ink" style="width:100%;">Send message</button>
-      <p class="form-msg" id="formMsg"></p>
+      <p class="form-msg" id="formMsg" role="status" aria-live="polite"></p>
     </form>
+    <div class="form-done" id="contactDone" hidden>
+      <span class="form-done-icon" aria-hidden="true">&#10003;</span>
+      <h3>Message sent</h3>
+      <p>Thanks for reaching out. We'll be in touch soon.</p>
+      <button type="button" class="btn ink" data-close-contact>Done</button>
+    </div>
   </div>
 </div>
 
 <script src="js/loader.js?v=6"></script>
-<script src="js/main.js?v=62"></script>
+<script src="js/main.js?v=63"></script>
 <script src="js/work-showcase.js?v=4"></script>
 <script src="js/services-showcase.js?v=6"></script>
 <script src="js/how-it-works.js?v=9"></script>
@@ -596,8 +605,9 @@
 <script src="js/vendor/ScrollTrigger.min.js?v=3.15.0"></script>
 <script src="js/vendor/lenis.min.js?v=1.3.26"></script>
 <script src="js/about-wipe.js?v=5"></script>
-<script src="js/brands-motion.js?v=14"></script>
-<script src="js/band-people.js?v=4"></script>
-<script src="js/cursor.js?v=2"></script>
+<script src="js/brands-motion.js?v=16"></script>
+<script src="js/band-people.js?v=5"></script>
+<script src="js/forms.js?v=2"></script>
+<script src="js/cursor.js?v=3"></script>
 </body>
 </html>

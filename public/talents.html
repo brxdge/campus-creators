@@ -8,10 +8,10 @@
 <link rel="canonical" href="https://campuscreators.ca/talents">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#0b0b0b">
-<link rel="icon" href="/favicon.ico" sizes="48x48">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="manifest" href="/site.webmanifest">
+<link rel="icon" href="/favicon.ico?v=2" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
+<link rel="manifest" href="/site.webmanifest?v=2">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Campus Creators">
 <meta property="og:locale" content="en_CA">
@@ -28,7 +28,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Arimo:wght@700;800&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=147">
+<link rel="stylesheet" href="css/style.css?v=155">
 </head>
 <body class="tal-body">
 
@@ -240,140 +240,103 @@
 <!-- APPLY MODAL -->
 <div class="tal-modal" id="applyModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="applyModalTitle">
   <div class="tal-modal-backdrop" id="applyModalBackdrop"></div>
-  <div class="tal-modal-panel" role="document">
+  <div class="tal-modal-panel" role="document" data-lenis-prevent>
     <button class="tal-modal-close" id="applyModalClose" type="button" aria-label="Close">&times;</button>
     <div class="tal-modal-head">
       <h2 id="applyModalTitle">Apply to join</h2>
       <p>Tell us who you are and what you make. Fields marked <span class="tal-req">*</span> are required.</p>
     </div>
     <form class="tal-form" id="applyForm" novalidate>
-      <div class="tal-form-grid">
-        <label class="tal-field">
-          <span>First name <span class="tal-req">*</span></span>
-          <input type="text" name="firstName" autocomplete="given-name" required>
-        </label>
-        <label class="tal-field">
-          <span>Last name <span class="tal-req">*</span></span>
-          <input type="text" name="lastName" autocomplete="family-name" required>
-        </label>
-        <label class="tal-field">
-          <span>Email <span class="tal-req">*</span></span>
-          <input type="email" name="email" autocomplete="email" required>
-        </label>
-        <label class="tal-field">
-          <span>Phone <span class="tal-req">*</span></span>
-          <input type="tel" name="phone" autocomplete="tel" required>
-        </label>
-
-        <fieldset class="tal-field tal-field-birthday">
-          <legend>Birthday <span class="tal-req">*</span></legend>
-          <div class="tal-birthday-row">
-            <select name="birthMonth" required aria-label="Birth month">
-              <option value="" disabled selected>Month</option>
-              <option>January</option><option>February</option><option>March</option>
-              <option>April</option><option>May</option><option>June</option>
-              <option>July</option><option>August</option><option>September</option>
-              <option>October</option><option>November</option><option>December</option>
-            </select>
-            <input type="number" name="birthDay" min="1" max="31" placeholder="Day" required aria-label="Birth day">
-            <input type="number" name="birthYear" min="1900" max="2015" placeholder="Year" required aria-label="Birth year">
-          </div>
-        </fieldset>
-
-        <label class="tal-field">
-          <span>Hometown <span class="tal-req">*</span></span>
-          <input type="text" name="hometown" required>
-        </label>
-
-        <label class="tal-field">
-          <span>University or college <span class="tal-req">*</span></span>
-          <select name="university" required>
-            <option value="" disabled selected>Select your school</option>
-            <option>University of Toronto</option>
-            <option>Toronto Metropolitan University</option>
-            <option>York University</option>
-            <option>McGill University</option>
-            <option>Concordia University</option>
-            <option>University of British Columbia</option>
-            <option>Simon Fraser University</option>
-            <option>University of Waterloo</option>
-            <option>Western University</option>
-            <option>Queen's University</option>
-            <option>McMaster University</option>
-            <option>University of Alberta</option>
-            <option>University of Calgary</option>
-            <option>Other</option>
-          </select>
-        </label>
-        <label class="tal-field">
-          <span>Or tell us where you go</span>
-          <input type="text" name="universityOther" placeholder="If it's not in the list">
-        </label>
-
-        <label class="tal-field">
-          <span>Year for 2025/2026 <span class="tal-req">*</span></span>
-          <select name="year" required>
-            <option value="" disabled selected>Select year</option>
-            <option>1st year</option>
-            <option>2nd year</option>
-            <option>3rd year</option>
-            <option>4th year</option>
-            <option>5th year +</option>
-            <option>Graduate</option>
-            <option>Recently graduated</option>
-          </select>
-        </label>
-        <label class="tal-field">
-          <span>Member of any organizations?</span>
-          <input type="text" name="organizations" placeholder="Greek life, sports team, campus clubs etc.">
-        </label>
-
-        <label class="tal-field">
-          <span>Instagram profile (link) <span class="tal-req">*</span></span>
-          <input type="url" name="instagram" placeholder="https://instagram.com/…" required>
-        </label>
-        <label class="tal-field">
-          <span>TikTok profile (link)</span>
-          <input type="url" name="tiktok" placeholder="https://tiktok.com/@…">
-        </label>
+      <div class="tf-step">
+        <h3 class="tf-step-title"><span>01</span> About you</h3>
+        <div class="tal-form-grid">
+          <label class="tal-field"><span>First name <span class="tal-req">*</span></span>
+            <input type="text" name="firstName" autocomplete="given-name" maxlength="60" required></label>
+          <label class="tal-field"><span>Last name <span class="tal-req">*</span></span>
+            <input type="text" name="lastName" autocomplete="family-name" maxlength="60" required></label>
+          <label class="tal-field"><span>Email <span class="tal-req">*</span></span>
+            <input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+          <label class="tal-field"><span>Phone <span class="tal-req">*</span></span>
+            <input type="tel" name="phone" autocomplete="tel" maxlength="30" placeholder="(416) 555-0123" required></label>
+          <fieldset class="tal-field tal-field-birthday">
+            <legend>Birthday <span class="tal-req">*</span></legend>
+            <div class="tal-birthday-row">
+              <select name="birthMonth" required aria-label="Birth month"><option value="">Month</option><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select>
+              <select name="birthDay" required aria-label="Birth day"><option value="">Day</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>23</option><option>24</option><option>25</option><option>26</option><option>27</option><option>28</option><option>29</option><option>30</option><option>31</option></select>
+              <select name="birthYear" required aria-label="Birth year"><option value="">Year</option><option>2010</option><option>2009</option><option>2008</option><option>2007</option><option>2006</option><option>2005</option><option>2004</option><option>2003</option><option>2002</option><option>2001</option><option>2000</option><option>1999</option><option>1998</option><option>1997</option><option>1996</option><option>1995</option><option>1994</option><option>1993</option><option>1992</option><option>1991</option><option>1990</option></select>
+            </div>
+          </fieldset>
+          <label class="tal-field"><span>Hometown <span class="tal-req">*</span></span>
+            <input type="text" name="hometown" autocomplete="address-level2" maxlength="80" placeholder="City, province" required></label>
+        </div>
       </div>
 
-      <fieldset class="tal-field tal-field-interests">
-        <legend>Interests (select all that apply) <span class="tal-req">*</span></legend>
-        <div class="tal-checks">
-          <label><input type="checkbox" name="interests" value="Fashion & Clothing"> Fashion &amp; Clothing</label>
-          <label><input type="checkbox" name="interests" value="Fitness & Exercise"> Fitness &amp; Exercise</label>
-          <label><input type="checkbox" name="interests" value="Sports"> Sports</label>
-          <label><input type="checkbox" name="interests" value="Health & Wellness"> Health &amp; Wellness</label>
-          <label><input type="checkbox" name="interests" value="Technology"> Technology</label>
-          <label><input type="checkbox" name="interests" value="Lifestyle"> Lifestyle</label>
-          <label><input type="checkbox" name="interests" value="Food & Cooking"> Food &amp; Cooking</label>
-          <label><input type="checkbox" name="interests" value="Art"> Art</label>
-          <label><input type="checkbox" name="interests" value="Partying"> Partying</label>
-          <label><input type="checkbox" name="interests" value="Film & Photography"> Film &amp; Photography</label>
+      <div class="tf-step">
+        <h3 class="tf-step-title"><span>02</span> School</h3>
+        <div class="tal-form-grid">
+          <label class="tal-field"><span>University or college <span class="tal-req">*</span></span>
+            <select name="university" required><option value="">Select your school</option><option>University of Toronto</option><option>Toronto Metropolitan University</option><option>York University</option><option>OCAD University</option><option>McGill University</option><option>Concordia University</option><option>University of British Columbia</option><option>Simon Fraser University</option><option>University of Waterloo</option><option>Wilfrid Laurier University</option><option>Western University</option><option>Queen's University</option><option>McMaster University</option><option>University of Ottawa</option><option>Carleton University</option><option>University of Guelph</option><option>University of Alberta</option><option>University of Calgary</option><option>Dalhousie University</option><option>Humber College</option><option>George Brown College</option><option>Seneca Polytechnic</option><option>Sheridan College</option><option>Other</option></select></label>
+          <label class="tal-field tal-other" hidden><span>School name <span class="tal-req">*</span></span>
+            <input type="text" name="universityOther" maxlength="100" placeholder="Where do you go?"></label>
+          <label class="tal-field"><span>Year in 2026/2027 <span class="tal-req">*</span></span>
+            <select name="year" required><option value="">Select year</option>
+              <option>1st year</option><option>2nd year</option><option>3rd year</option><option>4th year</option>
+              <option>5th year +</option><option>Graduate student</option><option>Recently graduated</option></select></label>
+          <label class="tal-field"><span>Clubs, teams or organizations</span>
+            <input type="text" name="organizations" maxlength="200" placeholder="Greek life, sports team, campus clubs…"></label>
         </div>
-      </fieldset>
+      </div>
 
-      <label class="tal-field tal-field-referred">
-        <span>Referred by a current Campus Creator?</span>
-        <input type="text" name="referredBy" placeholder="Enter their full name here!">
+      <div class="tf-step">
+        <h3 class="tf-step-title"><span>03</span> Your socials</h3>
+        <div class="tal-form-grid">
+          <label class="tal-field"><span>Instagram <span class="tal-req">*</span></span>
+            <span class="tal-handle"><i>@</i><input type="text" name="instagram" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="120" placeholder="yourhandle or profile link" required></span></label>
+          <label class="tal-field"><span>Instagram followers</span>
+            <select name="igFollowers"><option value="">Select a range</option>
+              <option>Under 1K</option><option>1K to 5K</option><option>5K to 10K</option><option>10K to 50K</option><option>50K+</option></select></label>
+          <label class="tal-field"><span>TikTok</span>
+            <span class="tal-handle"><i>@</i><input type="text" name="tiktok" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="120" placeholder="yourhandle (optional)"></span></label>
+          <label class="tal-field"><span>Referred by a Campus Creator?</span>
+            <input type="text" name="referredBy" maxlength="80" placeholder="Their full name"></label>
+        </div>
+      </div>
+
+      <div class="tf-step">
+        <h3 class="tf-step-title"><span>04</span> What you're into <span class="tal-req">*</span></h3>
+        <fieldset class="tal-field tal-field-interests" data-group="interests">
+          <legend class="sr-only">Interests (pick at least one)</legend>
+          <div class="tal-chips"><label class="tal-chip"><input type="checkbox" name="interests" value="Fashion & Clothing"><span>Fashion &amp; Clothing</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Beauty & Skincare"><span>Beauty &amp; Skincare</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Fitness & Exercise"><span>Fitness &amp; Exercise</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Sports"><span>Sports</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Health & Wellness"><span>Health &amp; Wellness</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Food & Cooking"><span>Food &amp; Cooking</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Lifestyle"><span>Lifestyle</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Travel"><span>Travel</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Technology"><span>Technology</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Gaming"><span>Gaming</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Music"><span>Music</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Art"><span>Art</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Film & Photography"><span>Film &amp; Photography</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Nightlife & Events"><span>Nightlife &amp; Events</span></label></div>
+        </fieldset>
+      </div>
+
+      <label class="tal-consent" data-group="consent">
+        <input type="checkbox" name="consent" value="Yes" required>
+        <span>I'm happy for Campus Creators to contact me about paid campaigns. <span class="tal-req">*</span></span>
       </label>
 
-      <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp-field">
+      <div class="hp-wrap" aria-hidden="true"><label>Leave this empty<input type="text" name="cc_hp" tabindex="-1" autocomplete="new-password"></label></div>
       <div class="tal-form-foot">
-        <p class="tal-form-msg" id="applyFormMsg" role="status"></p>
+        <p class="tal-form-msg" id="applyFormMsg" role="status" aria-live="polite"></p>
         <button type="submit" class="btn tal-submit">Submit application</button>
       </div>
     </form>
+    <div class="form-done" id="applyDone" hidden>
+      <span class="form-done-icon" aria-hidden="true">&#10003;</span>
+      <h3>Application received</h3>
+      <p>Thanks for applying. We'll email you when there's a campaign that fits you.</p>
+      <button type="button" class="btn tal-submit" data-close-apply>Done</button>
+    </div>
   </div>
 </div>
 
-<script src="js/main.js?v=61"></script>
+<script src="js/main.js?v=63"></script>
 <script src="js/vendor/gsap.min.js?v=3.15.0"></script>
 <script src="js/vendor/ScrollTrigger.min.js?v=3.15.0"></script>
 <script src="js/vendor/lenis.min.js?v=1.3.26"></script>
 <script src="js/talents-motion.js?v=8"></script>
-<script src="js/talents.js?v=12"></script>
-<script src="js/cursor.js?v=2"></script>
+<script src="js/talents.js?v=13"></script>
+<script src="js/forms.js?v=2"></script>
+<script src="js/cursor.js?v=3"></script>
 </body>
 </html>
