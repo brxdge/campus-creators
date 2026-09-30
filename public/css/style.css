@@ -2949,7 +2949,7 @@ html.ccc-active, html.ccc-active *{cursor:none !important;}
 }
 .ccc.ccc-show[data-state="link"] .ccc-ring,.ccc.ccc-show[data-state="video"] .ccc-ring,.ccc-ripple{opacity:1;}
 /* idle: ring shrunk to nothing, so it grows out of the arrow when it activates */
-.ccc:not([data-state="link"]):not([data-state="video"]) .ccc-ring::before{transform:translate(-50%,-50%) scale(0);}
+.ccc:not([data-state="link"]):not([data-state="video"]):not([data-state="cta"]) .ccc-ring::before{transform:translate(-50%,-50%) scale(0);}
 
 .ccc-dot::before{
   content:"";position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;
@@ -3081,15 +3081,144 @@ html.ccc-active, html.ccc-active *{cursor:none !important;}
 @keyframes bp-twinkle{0%,100%{transform:scale(1) rotate(0);opacity:1;}50%{transform:scale(.55) rotate(45deg);opacity:.6;}}
 @keyframes bp-ring{from{transform:rotate(0) translateX(0);}50%{transform:rotate(180deg) translateX(1.5%);}to{transform:rotate(360deg) translateX(0);}}
 
-/* phones / narrow: under the text, centred */
+/* phones / narrow: the band stays exactly one screen tall (so the
+   one-swipe glide works) and the pictures shrink to fit whatever space
+   is left under the button */
 @media (max-width:900px){
-  .band{flex-direction:column;justify-content:space-between;}
-  .band .band-inner{order:1;}
-  .band-people{order:2;position:relative;right:auto;bottom:auto;height:auto;
-    width:min(92%,460px);align-self:center;margin:24px auto -40px;aspect-ratio:.97 / 1;}
-  .band:not(.cc-choreo .band) .band-people{margin-bottom:-70px;}
+  #sections > .band{height:100vh;height:100svh;min-height:0 !important;
+    display:flex;flex-direction:column;justify-content:flex-start;}
+  #sections > .band > .band-inner{order:1;flex:0 0 auto;}
+  /* exact size set by js/band-people.js from the space that's left */
+  .band-people{order:2;position:relative;right:auto;bottom:auto;flex:none;
+    height:var(--mh,40vh);width:calc(var(--mh,40vh) * .97);max-width:100%;
+    aspect-ratio:auto;align-self:center;margin:18px auto 0;}
 }
 @media (prefers-reduced-motion: reduce){
   .band-people .bp-img,.band-people .bp-disc,.band-people .bp-ring,.band-people .bp-spark,.band-people .bp-floor{
     opacity:1 !important;transform:none !important;transition:none !important;animation:none !important;}
 }
+
+/* ============================================================
+   Forms v2 (js/forms.js): inline errors, done screen, talent steps
+   ============================================================ */
+/* typed text shows as typed (emails and handles were being shown in caps) */
+input,textarea{text-transform:none;}
+.contact-modal-panel select{font-family:var(--body);font-size:15px;padding:13px 15px;border:1.5px solid var(--bone-line);border-radius:10px;background:#fff;color:var(--ink);}
+.contact-modal-panel select:focus{border-color:var(--red);outline:none;}
+/* modal panels scroll smoothly on trackpads/phones and never leak scroll to the page */
+.contact-modal-panel,.tal-modal-panel{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+
+.hp-wrap{position:absolute !important;left:-10000px !important;top:auto;width:1px;height:1px;overflow:hidden;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+
+/* errors */
+.field-err{display:block;font-size:12.5px;font-weight:600;line-height:1.35;color:#C0321A;margin-top:2px;}
+.tal-modal .field-err{color:#ff8a75;}
+.field.is-invalid input,.field.is-invalid textarea,.field.is-invalid select{border-color:#C0321A;box-shadow:0 0 0 4px rgba(192,50,26,.12);}
+.tal-field.is-invalid input,.tal-field.is-invalid select{border-color:#ff8a75;}
+.is-invalid .tal-chip span{border-color:rgba(255,138,117,.7);}
+.tal-consent.is-invalid input{border-color:#ff8a75;}
+
+/* loading state on submit buttons */
+.btn.is-loading{pointer-events:none;opacity:.7;position:relative;}
+.btn.is-loading::after{content:"";display:inline-block;width:14px;height:14px;margin-left:10px;vertical-align:-2px;
+  border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:cc-spin .7s linear infinite;}
+@keyframes cc-spin{to{transform:rotate(360deg);}}
+
+/* done screen */
+.form-done{text-align:center;padding:40px 10px 20px;}
+.form-done-icon{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:50%;
+  background:var(--red);color:#fff;font-size:30px;margin-bottom:18px;animation:cc-pop .5s cubic-bezier(.2,1.4,.4,1);}
+.form-done h3{font-size:clamp(26px,3vw,36px);text-transform:uppercase;margin:0 0 10px;}
+.form-done p{margin:0 auto 24px;max-width:42ch;opacity:.75;}
+@keyframes cc-pop{from{transform:scale(.3);opacity:0;}to{transform:scale(1);opacity:1;}}
+
+/* talent form steps */
+.tf-step{padding:22px 0;border-top:1px solid var(--line);}
+.tf-step:first-child{border-top:0;padding-top:4px;}
+.tf-step-title{display:flex;align-items:center;gap:12px;margin:0 0 16px;font-size:18px;text-transform:uppercase;letter-spacing:.5px;}
+.tf-step-title > span:first-child{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;
+  border-radius:100px;background:var(--red);color:#fff;font-size:12px;letter-spacing:1px;}
+.tal-other[hidden]{display:none !important;}
+.tal-birthday-row{grid-template-columns:1.5fr 1fr 1.1fr;}
+
+/* @ handle inputs */
+.tal-handle{position:relative;display:block;}
+.tal-handle i{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-style:normal;font-weight:700;color:rgba(255,255,255,.5);pointer-events:none;}
+.tal-field .tal-handle input{padding-left:34px;}
+
+/* interest chips */
+.tal-chips{display:flex;flex-wrap:wrap;gap:10px;}
+.tal-chip{position:relative;cursor:pointer;}
+.tal-chip input{position:absolute;opacity:0;width:1px;height:1px;}
+.tal-chip span{display:inline-block;padding:10px 16px;border:1px solid var(--line);border-radius:100px;
+  font-family:var(--body);font-weight:600;font-size:14px;color:rgba(255,255,255,.82);background:var(--surface);
+  transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease;}
+.tal-chip:hover span{border-color:rgba(255,255,255,.4);}
+.tal-chip input:checked + span{background:var(--red);border-color:var(--red);color:#fff;}
+.tal-chip input:focus-visible + span{outline:2px solid #fff;outline-offset:2px;}
+
+/* consent */
+.tal-consent{display:flex;align-items:flex-start;gap:12px;margin:18px 0 0;padding:16px 18px;border:1px solid var(--line);border-radius:14px;
+  font-family:var(--body);font-weight:500;font-size:14.5px;color:rgba(255,255,255,.85);cursor:pointer;flex-wrap:wrap;}
+.tal-consent input{appearance:none;-webkit-appearance:none;width:20px;height:20px;flex-shrink:0;margin-top:1px;
+  border:1.5px solid rgba(255,255,255,.4);border-radius:5px;background:var(--surface);position:relative;cursor:pointer;}
+.tal-consent input:checked{background:var(--red);border-color:var(--red);}
+.tal-consent input:checked::after{content:'';position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);}
+.tal-consent > span{flex:1;}
+.tal-consent .field-err{flex-basis:100%;}
+.tal-modal .form-done{color:#fff;}
+@media (max-width:640px){
+  .tal-birthday-row{grid-template-columns:1.3fr 1fr 1.1fr;gap:8px;}
+  .tal-chip span{padding:9px 14px;font-size:13.5px;}
+}
+
+/* ---------- form modal fixes ---------- */
+/* titles were inheriting the site's white heading colour on the white panel */
+.contact-modal-panel h2,.contact-modal-panel h3,.contact-modal .form-done h3{color:var(--ink);}
+.contact-modal .form-done p{color:rgba(26,26,28,.72);opacity:1;}
+.tal-modal .form-done h3{color:#fff;}
+/* once sent, only the confirmation shows */
+.contact-modal-panel.is-done > h2,.contact-modal-panel.is-done > p,.tal-modal-panel.is-done .tal-modal-head{display:none;}
+.is-done .form-done{padding:48px 10px 36px;}
+
+/* ============================================================
+   CONTACT section — minimal
+   One headline, one line, two quiet text links.
+   ============================================================ */
+@media (min-width:761px){
+  .brands-body .contact-cta-inner{padding-top:clamp(96px,13vh,140px);padding-bottom:clamp(30px,5vh,60px);}
+  .brands-body .contact-cta-link{font-size:clamp(64px,min(10.5vw,15vh),220px);}
+}
+.cc-min{gap:clamp(16px,2.2vh,26px);}
+.contact-cta-link{position:relative;}
+/* thin line draws under the headline on hover; arrow nudges right */
+.cc-cta-text{position:relative;display:inline-block;}
+.cc-cta-text::after{content:"";position:absolute;left:0;right:0;bottom:-.06em;height:3px;background:currentColor;
+  transform:scaleX(0);transform-origin:right center;transition:transform .6s cubic-bezier(.65,0,.35,1);}
+.contact-cta-link:hover .cc-cta-text::after,.contact-cta-link:focus-visible .cc-cta-text::after{transform:scaleX(1);transform-origin:left center;}
+.contact-cta-arrow{font-size:.5em;transition:transform .45s cubic-bezier(.22,1,.36,1);}
+.contact-cta-link:hover .contact-cta-arrow{transform:translateX(.25em);}
+
+.cc-sub{margin:0;max-width:46ch;font-size:clamp(14px,1.1vw,17px);line-height:1.6;color:rgba(255,255,255,.62);}
+.cc-actions{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center;}
+.cc-link{position:relative;color:#fff;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;padding:4px 0;}
+.cc-link::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:currentColor;opacity:.5;
+  transition:opacity .25s ease,transform .45s cubic-bezier(.65,0,.35,1);}
+.cc-link:hover::after{opacity:1;}
+.cc-link:hover{color:var(--red);}
+.cc-link-muted{color:rgba(255,255,255,.55);font-weight:600;}
+.cc-sep{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.35);}
+@media (max-width:760px){
+  .cc-sub{font-size:13px;}
+  .cc-link{font-size:12px;letter-spacing:1.1px;}
+  .cc-actions{gap:12px;}
+}
+
+/* cursor: big "Get in touch" link gets its own badge instead of the inverting disc */
+.ccc-label{position:absolute;left:0;top:0;transform:translate(-50%,-50%) scale(.4);opacity:0;white-space:nowrap;
+  font:800 11px/1 "Work Sans",system-ui,sans-serif;letter-spacing:1.6px;color:#fff;transition:opacity .25s ease,transform .45s cubic-bezier(.2,.8,.2,1);}
+.ccc.ccc-show[data-state="cta"] .ccc-ring{opacity:1;mix-blend-mode:normal;}
+.ccc[data-state="cta"] .ccc-ring::before{width:22px;height:22px;background:var(--red,#EB3F22);border-color:var(--red,#EB3F22);box-shadow:0 0 0 8px rgba(235,63,34,.18);}
+.ccc[data-state="cta"] .ccc-label{opacity:0;}
+.ccc[data-state="cta"] .ccc-ripple{mix-blend-mode:normal;}
