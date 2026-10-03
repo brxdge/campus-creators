@@ -1,486 +1,343 @@
-// ============================================================
-// Talents page — hero video, roster wall, apply modal, counters.
-//
-// Media: styled placeholders now, with a hook to wire the admin media
-// library later. If main.js has already populated MEDIA_DATA (same
-// /api/media source the brands page uses) and exposed resolveMedia(),
-// this pulls real photos/videos into the roster; otherwise
-// it falls back to tinted placeholder cards so nothing looks broken
-// before real talent media exists. Swap in a dedicated /api/talents feed
-// here when it's ready — only collectMedia() needs to change.
-// ============================================================
-(function talentsPage() {
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join as a Student Creator | Campus Creators Talents</title>
+<meta name="description" content="Join the Campus Creators talent network. Student creators making real campaigns for real brands across Canadian campuses.">
+<link rel="canonical" href="https://campuscreators.ca/talents">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#0b0b0b">
+<link rel="icon" href="/favicon.ico?v=2" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
+<link rel="manifest" href="/site.webmanifest?v=2">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Campus Creators">
+<meta property="og:locale" content="en_CA">
+<meta property="og:url" content="https://campuscreators.ca/talents">
+<meta property="og:title" content="Join as a Student Creator | Campus Creators Talents">
+<meta property="og:description" content="Join the Campus Creators talent network. Student creators making real campaigns for real brands across Canadian campuses.">
+<meta property="og:image" content="https://campuscreators.ca/assets/campus-creators-logo.png">
+<meta property="og:image:alt" content="Campus Creators logo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Join as a Student Creator | Campus Creators Talents">
+<meta name="twitter:description" content="Join the Campus Creators talent network. Student creators making real campaigns for real brands across Canadian campuses.">
+<meta name="twitter:image" content="https://campuscreators.ca/assets/campus-creators-logo.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","url":"https://campuscreators.ca/talents","name":"Join as a Student Creator | Campus Creators Talents","isPartOf":{"@id":"https://campuscreators.ca/#website"},"about":{"@id":"https://campuscreators.ca/#org"},"inLanguage":"en-CA"}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Arimo:wght@700;800&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=155">
+</head>
+<body class="tal-body">
 
-  // ---------- shared: gather whatever real media is available ----------
-  // Returns { photos:[src...], videos:[{src,poster}...] } from MEDIA_DATA
-  // if it's loaded, else empty arrays. Never fabricates URLs.
-  function collectMedia() {
-    const photos = [];
-    const videos = [];
-    const data = (typeof MEDIA_DATA !== 'undefined' && MEDIA_DATA) ? MEDIA_DATA : {};
-    const resolve = (typeof resolveMedia === 'function') ? resolveMedia : (x) => x;
-    Object.keys(data).forEach((brand) => {
-      const b = data[brand] || {};
-      (b.photos || []).forEach((p) => { if (p) photos.push(resolve(p)); });
-      (b.videos || []).forEach((v) => {
-        if (v && v.src) videos.push({ src: resolve(v.src), poster: v.poster ? resolve(v.poster) : '' });
-      });
-    });
-    return { photos, videos };
-  }
+<header id="siteHeader">
+  <nav class="nav">
+    <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false">&#9776;</button>
+    <a href="/#top" class="nav-logo"><img src="assets/campus-creators-logo.png" alt="Campus Creators"></a>
+    <div class="nav-links" id="navLinks">
+      <div class="nav-side nav-left">
+        <a href="/">Brands</a>
+        <a href="/talents" class="is-current">Talents</a>
+      </div>
+      <div class="nav-side nav-right">
+        <a href="/#about">About Us</a>
+        <a href="#" class="nav-cta" id="openApplyNav"><span class="nav-cta-label">Apply now</span><span class="nav-cta-arrow" aria-hidden="true">&#8594;</span></a>
+      </div>
+    </div>
+  </nav>
+</header>
 
-  // ---------- full-screen hero video cycle ----------
-  // One video fills the whole hero, plays, then crossfades to the next,
-  // cycling through every available clip. On-screen time per clip
-  // alternates 5s, 3s, 5s, 3s… as requested. Two stacked <video>
-  // elements swap the "front" role so the next clip is already loaded and
-  // playing before it fades in — no black flash between clips.
-  //
-  // Media source: the same MEDIA_DATA the brands page uses (collectMedia
-  // gathers every uploaded video). If no videos are available yet the hero
-  // falls back to its flat dark background — nothing else sits behind it.
-  const HERO_DURATIONS = [5000, 3000]; // ms on screen, alternating
-  let heroCycle = { timer: null, step: 0, front: null, back: null, clips: [] };
+<main id="top">
+<div id="sections">
+  <!-- HERO -->
+  <section class="tal-hero" id="talHero">
+    <div class="tal-hero-video" id="talHeroVideo" aria-hidden="true">
+      <video class="tal-hero-vid" id="talHeroVidA" muted playsinline preload="auto"></video>
+      <video class="tal-hero-vid" id="talHeroVidB" muted playsinline preload="auto"></video>
+    </div>
+    <div class="tal-hero-scrim" aria-hidden="true"></div>
+    <div class="tal-hero-inner wrap tal-reveal">
+      <h1>You make<br>the content</h1>
+      <a href="#" class="tal-hero-cta" id="openApplyHero">Apply to join <span aria-hidden="true">&#8594;</span></a>
+    </div>
+  </section>
 
-  function startHeroVideoCycle() {
-    const stage = document.getElementById('talHeroVideo');
-    const vidA = document.getElementById('talHeroVidA');
-    const vidB = document.getElementById('talHeroVidB');
-    if (!stage || !vidA || !vidB) return;
+  <!-- WHY JOIN -->
+  <section class="tal-sec tal-why" id="tal-why">
+    <div class="wrap tw-layout tal-reveal">
+      <div class="tw-head">
+        <h2>Why<img class="how-star" src="assets/star.png" alt="" aria-hidden="true">join</h2>
+        <p>We handle the brand side: briefs, deals, usage rights and payment. You make content you'd post anyway.</p>
+      </div>
+      <ol class="tw-list">
+        <li class="tw-row">
+          <span class="tw-num" aria-hidden="true">01</span>
+          <div class="tw-text"><h3>Get paid to post</h3><p>Paid brand deals matched to what you already make. No chasing invoices, we handle the money side.</p></div>
+          <span class="tw-arrow" aria-hidden="true">&#8594;</span>
+        </li>
+        <li class="tw-row">
+          <span class="tw-num" aria-hidden="true">02</span>
+          <div class="tw-text"><h3>Work with real brands</h3><p>HelloFresh, Carlsberg, Bet99 and more. Campaigns that go on your reel, not just your feed.</p></div>
+          <span class="tw-arrow" aria-hidden="true">&#8594;</span>
+        </li>
+        <li class="tw-row">
+          <span class="tw-num" aria-hidden="true">03</span>
+          <div class="tw-text"><h3>Keep your creative</h3><p>Your voice, your style. We brief the goal and get out of the way. The content stays yours.</p></div>
+          <span class="tw-arrow" aria-hidden="true">&#8594;</span>
+        </li>
+        <li class="tw-row">
+          <span class="tw-num" aria-hidden="true">04</span>
+          <div class="tw-text"><h3>Grow on campus</h3><p>Ambassador roles, events and activations that put you in front of your whole campus.</p></div>
+          <span class="tw-arrow" aria-hidden="true">&#8594;</span>
+        </li>
+      </ol>
+    </div>
+  </section>
 
-    // tear down any previous run (e.g. media arrived after first boot)
-    clearTimeout(heroCycle.timer);
-    heroCycle.timer = null;
+  <!-- ROSTER -->
+  <section class="tal-sec tal-roster-sec" id="tal-roster">
+    <div class="wrap tal-reveal">
+      <div class="tal-sec-head">
+        <h2>Campus<img class="how-star" src="assets/star.png" alt="" aria-hidden="true">Ambassadors</h2>
+        <p>A slice of the creators already making campaigns with us. Hover to preview.</p>
+      </div>
+      <div class="tal-roster" id="talRoster"></div>
+      <div class="tal-roster-cta">
+        <a href="#" class="btn" id="openApplyRoster">Put yourself on this wall &#8594;</a>
+      </div>
+    </div>
+  </section>
 
-    const { videos } = collectMedia();
-    const clips = videos.filter((v) => v && v.src).map((v) => v.src);
+  <!-- HOW IT WORKS (talent side) -->
+  <section class="tal-sec tal-steps-sec" id="tal-how">
+    <div class="wrap tal-reveal">
+      <div class="ts-head">
+        <h2>From apply<img class="how-star" src="assets/star.png" alt="" aria-hidden="true">to paid</h2>
+        <p>Four steps, usually a couple of weeks from signup to your first campaign.</p>
+      </div>
+      <div class="ts-track">
+        <div class="ts-line" aria-hidden="true"><i></i></div>
+        <ol class="ts-steps">
+          <li class="ts-step">
+            <span class="ts-dot" aria-hidden="true"></span>
+            <span class="ts-num" aria-hidden="true">01</span>
+            <h3>Apply</h3>
+            <p>Fill the form with your socials, campus and what you're into. Takes two minutes.</p>
+          </li>
+          <li class="ts-step">
+            <span class="ts-dot" aria-hidden="true"></span>
+            <span class="ts-num" aria-hidden="true">02</span>
+            <h3>We match you</h3>
+            <p>When a brand fits your audience and style, we bring you the brief and the rate.</p>
+          </li>
+          <li class="ts-step">
+            <span class="ts-dot" aria-hidden="true"></span>
+            <span class="ts-num" aria-hidden="true">03</span>
+            <h3>You create</h3>
+            <p>Shoot it your way. We handle approvals, usage rights and the paperwork.</p>
+          </li>
+          <li class="ts-step">
+            <span class="ts-dot" aria-hidden="true"></span>
+            <span class="ts-num" aria-hidden="true">04</span>
+            <h3>Get paid</h3>
+            <p>Content goes live, you get paid, and you're first in line for the next one.</p>
+          </li>
+        </ol>
+      </div>
+    </div>
+  </section>
 
-    // no real videos yet → nothing to play, hero keeps its dark background
-    if (!clips.length) {
-      stage.classList.remove('has-clips');
-      return;
-    }
-    stage.classList.add('has-clips');
-    heroCycle.clips = clips;
-    heroCycle.step = 0;
-    heroCycle.front = vidA;
-    heroCycle.back = vidB;
+  <!-- FAQ -->
+  <section class="tal-sec tal-faq-sec" id="tal-faq">
+    <div class="wrap tq-layout tal-reveal">
+      <div class="tq-intro">
+        <h2>Questions</h2>
+        <p>The stuff people ask before applying. Still unsure? Just apply, it's free and there's no commitment.</p>
+        <a href="#" class="btn" id="openApplyFaq">Apply now &#8594;</a>
+      </div>
+      <div class="tq-list">
+        <details class="tq-item">
+          <summary><span class="tq-num" aria-hidden="true">01</span><span class="tq-q">Do I need a huge following?</span><span class="tq-plus" aria-hidden="true"></span></summary>
+          <p>No. We care more about how you make content and who's actually watching than a follower count. Micro-creators book campaigns here all the time.</p>
+        </details>
+        <details class="tq-item">
+          <summary><span class="tq-num" aria-hidden="true">02</span><span class="tq-q">Does it cost anything?</span><span class="tq-plus" aria-hidden="true"></span></summary>
+          <p>Never. Applying and being on the roster is free. You get paid by the brand for campaigns, so money only flows to you.</p>
+        </details>
+        <details class="tq-item">
+          <summary><span class="tq-num" aria-hidden="true">03</span><span class="tq-q">What kind of content?</span><span class="tq-plus" aria-hidden="true"></span></summary>
+          <p>Short-form mostly, the stuff you'd post on TikTok and Reels. Product moments, day-in-the-life, campus content, unboxings. Real, not overproduced.</p>
+        </details>
+        <details class="tq-item">
+          <summary><span class="tq-num" aria-hidden="true">04</span><span class="tq-q">Do I have to be a student?</span><span class="tq-plus" aria-hidden="true"></span></summary>
+          <p>Our network is built around campuses, so most creators are current students, but if you're campus-adjacent and make great content, still apply and tell us your situation.</p>
+        </details>
+        <details class="tq-item">
+          <summary><span class="tq-num" aria-hidden="true">05</span><span class="tq-q">How much do campaigns pay?</span><span class="tq-plus" aria-hidden="true"></span></summary>
+          <p>It varies by brand, deliverables and your reach. Every brief comes with the rate up front, so you decide before you commit. No surprises.</p>
+        </details>
+      </div>
+    </div>
+  </section>
 
-    // reduced motion: show one still frame, no cycling
-    if (reduceMotion) {
-      vidA.src = clips[0];
-      vidA.classList.add('show');
-      vidA.load();
-      return;
-    }
+  <!-- CLOSER -->
+  <section class="tal-closer" id="tal-closer">
+    <video class="tal-closer-video" id="talCloserVideo" muted loop playsinline preload="none" aria-hidden="true"></video>
+    <div class="tal-closer-overlay" aria-hidden="true"></div>
+    <div class="tal-closer-main">
+      <div class="tal-closer-stars" aria-hidden="true">
+        <img src="assets/star.png" alt="">
+        <img src="assets/star.png" alt="">
+        <img src="assets/star.png" alt="">
+        <img src="assets/star.png" alt="">
+        <img src="assets/star.png" alt="">
+        <img src="assets/star.png" alt="">
+      </div>
+      <div class="wrap tal-reveal">
+      <h2>Ready to get on the roster?</h2>
+      <p>Two minutes to apply. Free, no commitment, and you could be on your first campaign in weeks.</p>
+      <a href="#" class="btn tal-closer-btn" id="openApplyCloser">Apply to join &#8594;</a>
+      </div>
+    </div>
+    <div class="site-footer" role="contentinfo">
+      <div class="wrap footer-top">
+        <div class="footer-brand">
+          <img src="assets/campus-creators-logo.png" alt="Campus Creators" class="footer-logo">
+          <p>Connecting brands to campuses across Canada. Student-made content, ambassador programs, and live activations.</p>
+            <div class="footer-social">
+              <a href="https://www.instagram.com/campuscreators.ca" target="_blank" rel="noopener noreferrer" aria-label="Campus Creators on Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.8.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1.1.4 2.2.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 1.2-.2 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1.1.4-2.2.4-1.3.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-1.2-.1-1.8-.2-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.4-1.1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8c.1-1.2.2-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1.1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.1 0-3.5 0-4.7.1-1.1.1-1.7.2-2.1.4-.5.2-.9.4-1.3.8-.4.4-.6.8-.8 1.3-.2.4-.3 1-.4 2.1C2.7 9.9 2.7 10.3 2.7 12s0 3.5.1 4.7c.1 1.1.2 1.7.4 2.1.2.5.4.9.8 1.3.4.4.8.6 1.3.8.4.2 1 .3 2.1.4 1.2.1 1.6.1 4.7.1s3.5 0 4.7-.1c1.1-.1 1.7-.2 2.1-.4.5-.2.9-.4 1.3-.8.4-.4.6-.8.8-1.3.2-.4.3-1 .4-2.1.1-1.2.1-1.6.1-4.7s0-3.5-.1-4.7c-.1-1.1-.2-1.7-.4-2.1-.2-.5-.4-.9-.8-1.3-.4-.4-.8-.6-1.3-.8-.4-.2-1-.3-2.1-.4C15.5 4 15.1 4 12 4zm0 3.1a4.9 4.9 0 110 9.8 4.9 4.9 0 010-9.8zm0 8.1a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4zm6.2-8.3a1.1 1.1 0 11-2.3 0 1.1 1.1 0 012.3 0z"/></svg></a>
+              <a href="https://www.facebook.com/campuscreators.ca" target="_blank" rel="noopener noreferrer" aria-label="Campus Creators on Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 10-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7A10 10 0 0022 12z"/></svg></a>
+              <a href="https://www.linkedin.com/company/campus-creators" target="_blank" rel="noopener noreferrer" aria-label="Campus Creators on LinkedIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 20.5h-3.6v-5.6c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9v5.7H9.4V9h3.4v1.6h.1c.5-.9 1.6-1.8 3.4-1.8 3.6 0 4.3 2.4 4.3 5.5v6.2zM5.3 7.4a2.1 2.1 0 110-4.2 2.1 2.1 0 010 4.2zM7.1 20.5H3.6V9h3.5v11.5zM22.2 0H1.8C.8 0 0 .8 0 1.7v20.6c0 .9.8 1.7 1.8 1.7h20.4c1 0 1.8-.8 1.8-1.7V1.7C24 .8 23.2 0 22.2 0z"/></svg></a>
+              <a href="https://campuscreators.ca" aria-label="campuscreators.ca"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 6h-2.9a15.6 15.6 0 00-1.4-3.6A8 8 0 0118.9 8zM12 4c.8 1.2 1.5 2.5 1.9 4h-3.8c.4-1.5 1.1-2.8 1.9-4zM4.3 14a8.2 8.2 0 010-4h3.4a16.5 16.5 0 000 4H4.3zm.8 2h2.9c.3 1.3.8 2.5 1.4 3.6A8 8 0 015.1 16zM8 8H5.1a8 8 0 014.3-3.6C8.8 5.5 8.3 6.7 8 8zm4 12c-.8-1.2-1.5-2.5-1.9-4h3.8c-.4 1.5-1.1 2.8-1.9 4zm2.3-6H9.7a14.7 14.7 0 010-4h4.6a14.7 14.7 0 010 4zm.3 5.6c.6-1.1 1.1-2.3 1.4-3.6h2.9a8 8 0 01-4.3 3.6zm1.7-5.6a16.5 16.5 0 000-4h3.4a8.2 8.2 0 010 4h-3.4z"/></svg></a>
+            </div>
+        </div>
+        <div class="footer-col">
+          <p class="footer-col-title">Explore</p>
+          <a href="/">Brands</a>
+          <a href="/talents">Talents</a>
+          <a href="/#about">About us</a>
+        </div>
+        <div class="footer-col">
+          <p class="footer-col-title">Get started</p>
+          <a href="#" id="openApplyFooter">Apply as a creator</a>
+          <a href="/#contact">Brand enquiries</a>
+        </div>
+      </div>
+      <div class="wrap footer-inner">
+        <p>Campus Creators&trade; <span id="year">2026</span></p>
+        <p>Toronto, Ontario</p>
+        <p class="footer-legal"><a href="/privacy">Privacy Policy</a><span aria-hidden="true"> &middot; </span><a href="/terms">Terms of Service</a></p>
+        <a href="#top" class="footer-top-link">Back to top &uarr;</a>
+      </div>
+    </div>
+  </section>
 
-    let clipIndex = 0;
 
-    function playOn(videoEl, src) {
-      return new Promise((resolve) => {
-        let settled = false;
-        const done = () => { if (!settled) { settled = true; resolve(); } };
-        videoEl.src = src;
-        videoEl.currentTime = 0;
-        // resolve as soon as it can play, but never hang the cycle
-        videoEl.addEventListener('canplay', done, { once: true });
-        videoEl.addEventListener('error', done, { once: true });
-        setTimeout(done, 1200);
-        videoEl.load();
-        videoEl.play().catch(() => {});
-      });
-    }
+</div>
+</main>
 
-    function advance() {
-      const front = heroCycle.front;
-      const back = heroCycle.back;
-      const nextSrc = clips[clipIndex % clips.length];
-      clipIndex += 1;
+<!-- APPLY MODAL -->
+<div class="tal-modal" id="applyModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="applyModalTitle">
+  <div class="tal-modal-backdrop" id="applyModalBackdrop"></div>
+  <div class="tal-modal-panel" role="document" data-lenis-prevent>
+    <button class="tal-modal-close" id="applyModalClose" type="button" aria-label="Close">&times;</button>
+    <div class="tal-modal-head">
+      <h2 id="applyModalTitle">Apply to join</h2>
+      <p>Tell us who you are and what you make. Fields marked <span class="tal-req">*</span> are required.</p>
+    </div>
+    <form class="tal-form" id="applyForm" novalidate>
+      <div class="tf-step">
+        <h3 class="tf-step-title"><span>01</span> About you</h3>
+        <div class="tal-form-grid">
+          <label class="tal-field"><span>First name <span class="tal-req">*</span></span>
+            <input type="text" name="firstName" autocomplete="given-name" maxlength="60" required></label>
+          <label class="tal-field"><span>Last name <span class="tal-req">*</span></span>
+            <input type="text" name="lastName" autocomplete="family-name" maxlength="60" required></label>
+          <label class="tal-field"><span>Email <span class="tal-req">*</span></span>
+            <input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+          <label class="tal-field"><span>Phone <span class="tal-req">*</span></span>
+            <input type="tel" name="phone" autocomplete="tel" maxlength="30" placeholder="(416) 555-0123" required></label>
+          <fieldset class="tal-field tal-field-birthday">
+            <legend>Birthday <span class="tal-req">*</span></legend>
+            <div class="tal-birthday-row">
+              <select name="birthMonth" required aria-label="Birth month"><option value="">Month</option><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select>
+              <select name="birthDay" required aria-label="Birth day"><option value="">Day</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>23</option><option>24</option><option>25</option><option>26</option><option>27</option><option>28</option><option>29</option><option>30</option><option>31</option></select>
+              <select name="birthYear" required aria-label="Birth year"><option value="">Year</option><option>2010</option><option>2009</option><option>2008</option><option>2007</option><option>2006</option><option>2005</option><option>2004</option><option>2003</option><option>2002</option><option>2001</option><option>2000</option><option>1999</option><option>1998</option><option>1997</option><option>1996</option><option>1995</option><option>1994</option><option>1993</option><option>1992</option><option>1991</option><option>1990</option></select>
+            </div>
+          </fieldset>
+          <label class="tal-field"><span>Hometown <span class="tal-req">*</span></span>
+            <input type="text" name="hometown" autocomplete="address-level2" maxlength="80" placeholder="City, province" required></label>
+        </div>
+      </div>
 
-      // load the next clip into the back layer, then crossfade it forward
-      playOn(back, nextSrc).then(() => {
-        back.classList.add('show');
-        front.classList.remove('show');
-        // after the crossfade, pause the now-hidden layer to save decode
-        setTimeout(() => { try { front.pause(); } catch (e) {} }, 900);
-        // swap roles
-        heroCycle.front = back;
-        heroCycle.back = front;
-        // schedule the next swap using the alternating 5s / 3s cadence
-        const dwell = HERO_DURATIONS[heroCycle.step % HERO_DURATIONS.length];
-        heroCycle.step += 1;
-        heroCycle.timer = setTimeout(advance, dwell);
-      });
-    }
+      <div class="tf-step">
+        <h3 class="tf-step-title"><span>02</span> School</h3>
+        <div class="tal-form-grid">
+          <label class="tal-field"><span>University or college <span class="tal-req">*</span></span>
+            <select name="university" required><option value="">Select your school</option><option>University of Toronto</option><option>Toronto Metropolitan University</option><option>York University</option><option>OCAD University</option><option>McGill University</option><option>Concordia University</option><option>University of British Columbia</option><option>Simon Fraser University</option><option>University of Waterloo</option><option>Wilfrid Laurier University</option><option>Western University</option><option>Queen's University</option><option>McMaster University</option><option>University of Ottawa</option><option>Carleton University</option><option>University of Guelph</option><option>University of Alberta</option><option>University of Calgary</option><option>Dalhousie University</option><option>Humber College</option><option>George Brown College</option><option>Seneca Polytechnic</option><option>Sheridan College</option><option>Other</option></select></label>
+          <label class="tal-field tal-other" hidden><span>School name <span class="tal-req">*</span></span>
+            <input type="text" name="universityOther" maxlength="100" placeholder="Where do you go?"></label>
+          <label class="tal-field"><span>Year in 2026/2027 <span class="tal-req">*</span></span>
+            <select name="year" required><option value="">Select year</option>
+              <option>1st year</option><option>2nd year</option><option>3rd year</option><option>4th year</option>
+              <option>5th year +</option><option>Graduate student</option><option>Recently graduated</option></select></label>
+          <label class="tal-field"><span>Clubs, teams or organizations</span>
+            <input type="text" name="organizations" maxlength="200" placeholder="Greek life, sports team, campus clubs…"></label>
+        </div>
+      </div>
 
-    // kick off: show the first clip immediately, then start the cadence
-    playOn(vidA, clips[clipIndex % clips.length]).then(() => {
-      clipIndex += 1;
-      vidA.classList.add('show');
-      const dwell = HERO_DURATIONS[heroCycle.step % HERO_DURATIONS.length];
-      heroCycle.step += 1;
-      heroCycle.timer = setTimeout(advance, dwell);
-    });
+      <div class="tf-step">
+        <h3 class="tf-step-title"><span>03</span> Your socials</h3>
+        <div class="tal-form-grid">
+          <label class="tal-field"><span>Instagram <span class="tal-req">*</span></span>
+            <span class="tal-handle"><i>@</i><input type="text" name="instagram" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="120" placeholder="yourhandle or profile link" required></span></label>
+          <label class="tal-field"><span>Instagram followers</span>
+            <select name="igFollowers"><option value="">Select a range</option>
+              <option>Under 1K</option><option>1K to 5K</option><option>5K to 10K</option><option>10K to 50K</option><option>50K+</option></select></label>
+          <label class="tal-field"><span>TikTok</span>
+            <span class="tal-handle"><i>@</i><input type="text" name="tiktok" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="120" placeholder="yourhandle (optional)"></span></label>
+          <label class="tal-field"><span>Referred by a Campus Creator?</span>
+            <input type="text" name="referredBy" maxlength="80" placeholder="Their full name"></label>
+        </div>
+      </div>
 
-    // pause the whole cycle while the tab is backgrounded
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        clearTimeout(heroCycle.timer);
-      } else if (heroCycle.clips.length && !reduceMotion) {
-        const dwell = HERO_DURATIONS[heroCycle.step % HERO_DURATIONS.length];
-        heroCycle.timer = setTimeout(advance, dwell);
-      }
-    });
-  }
+      <div class="tf-step">
+        <h3 class="tf-step-title"><span>04</span> What you're into <span class="tal-req">*</span></h3>
+        <fieldset class="tal-field tal-field-interests" data-group="interests">
+          <legend class="sr-only">Interests (pick at least one)</legend>
+          <div class="tal-chips"><label class="tal-chip"><input type="checkbox" name="interests" value="Fashion & Clothing"><span>Fashion &amp; Clothing</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Beauty & Skincare"><span>Beauty &amp; Skincare</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Fitness & Exercise"><span>Fitness &amp; Exercise</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Sports"><span>Sports</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Health & Wellness"><span>Health &amp; Wellness</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Food & Cooking"><span>Food &amp; Cooking</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Lifestyle"><span>Lifestyle</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Travel"><span>Travel</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Technology"><span>Technology</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Gaming"><span>Gaming</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Music"><span>Music</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Art"><span>Art</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Film & Photography"><span>Film &amp; Photography</span></label><label class="tal-chip"><input type="checkbox" name="interests" value="Nightlife & Events"><span>Nightlife &amp; Events</span></label></div>
+        </fieldset>
+      </div>
 
-  // ---------- roster grid ----------
-  // Fallback list, used only if /api/roster can't be reached. The live list
-  // is managed in the admin (Campus Ambassadors) and loaded below.
-  let ROSTER = [
-    ['Maya R.', 'Lifestyle', 'UofT'], ['Devon K.', 'Fitness', 'TMU'], ['Priya S.', 'Food', 'Waterloo'],
-    ['Liam O.', 'Tech', 'UBC'], ['Chloe M.', 'Fashion', 'McGill'], ['Andre P.', 'Sports', 'Western'],
-    ['Sofia L.', 'Beauty', 'Queen\u2019s'], ['Noah T.', 'Film', 'Concordia'], ['Aisha B.', 'Wellness', 'York'],
-    ['Ethan W.', 'Gaming', 'McMaster'], ['Zara H.', 'Art', 'SFU'], ['Marcus D.', 'Music', 'UCalgary'],
-  ].map(([name, focus, school], i) => ({ id: i + 1, name, focus, school }));
+      <label class="tal-consent" data-group="consent">
+        <input type="checkbox" name="consent" value="Yes" required>
+        <span>I'm happy for Campus Creators to contact me about paid campaigns. <span class="tal-req">*</span></span>
+      </label>
 
-  function loadRoster() {
-    fetch('/api/roster', { headers: { Accept: 'application/json' } })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => {
-        if (data && Array.isArray(data.ambassadors)) { ROSTER = data.ambassadors; buildRoster(); }
-      })
-      .catch(() => { /* keep the fallback list */ });
-  }
+      <div class="hp-wrap" aria-hidden="true"><label>Leave this empty<input type="text" name="cc_hp" tabindex="-1" autocomplete="new-password"></label></div>
+      <div class="tal-form-foot">
+        <p class="tal-form-msg" id="applyFormMsg" role="status" aria-live="polite"></p>
+        <button type="submit" class="btn tal-submit">Submit application</button>
+      </div>
+    </form>
+    <div class="form-done" id="applyDone" hidden>
+      <span class="form-done-icon" aria-hidden="true">&#10003;</span>
+      <h3>Application received</h3>
+      <p>Thanks for applying. We'll email you when there's a campaign that fits you.</p>
+      <button type="button" class="btn tal-submit" data-close-apply>Done</button>
+    </div>
+  </div>
+</div>
 
-  function buildRoster() {
-    const grid = document.getElementById('talRoster');
-    if (!grid) return;
-    const { photos, videos } = collectMedia();
-    grid.innerHTML = '';
-
-    grid.style.setProperty('--rows', Math.max(1, Math.ceil(ROSTER.length / 3)));
-    ROSTER.forEach((person, i) => {
-      person = Object.assign({}, person, {
-        tone: (i % 5) + 1,
-        tag: [person.focus, person.school].filter(Boolean).join(' \u00b7 '),
-      });
-      const card = document.createElement('article');
-      card.className = 'tal-card';
-
-      const media = document.createElement('div');
-      media.className = 'tal-card-media t' + person.tone;
-
-      // prefer a real video (hover-to-play), else a real photo, else the
-      // tinted gradient placeholder the CSS already draws
-      // admin-assigned media for this roster card wins over the shared pool
-      const own = typeof slotPick === 'function' ? slotPick('slot-roster-' + person.id) : null;
-      const hasOwn = own && (own.video || own.poster);
-      const clip = hasOwn ? (own.video ? { src: own.video, poster: own.poster } : null)
-        : (videos.length ? videos[i % videos.length] : null);
-      const photo = hasOwn ? (own.video ? null : own.poster)
-        : (photos.length ? photos[i % photos.length] : null);
-
-      if (clip) {
-        const video = document.createElement('video');
-        video.className = 'tal-card-vid';
-        video.src = clip.src;
-        if (clip.poster) video.poster = clip.poster;
-        video.muted = true;
-        video.loop = true;
-        video.playsInline = true;
-        video.preload = 'metadata';
-        video.disablePictureInPicture = true;
-        video.disableRemotePlayback = true;
-        video.addEventListener('error', () => { video.remove(); media.classList.remove('has-media'); });
-        media.appendChild(video);
-        media.classList.add('has-media', 'has-video');
-        let hoverTimer = null;
-        card.addEventListener('mouseenter', () => { clearTimeout(hoverTimer); video.play().catch(() => {}); });
-        card.addEventListener('mouseleave', () => { hoverTimer = setTimeout(() => video.pause(), 150); });
-      } else if (photo) {
-        const img = document.createElement('img');
-        img.className = 'tal-card-img';
-        img.src = photo;
-        img.alt = '';
-        img.loading = 'lazy';
-        img.referrerPolicy = 'no-referrer';
-        img.addEventListener('error', () => { img.remove(); media.classList.remove('has-media'); });
-        media.appendChild(img);
-        media.classList.add('has-media');
-      } else {
-        // placeholder gets a soft monogram so it reads as a person card
-        const mono = document.createElement('span');
-        mono.className = 'tal-card-mono';
-        mono.textContent = person.name.charAt(0);
-        media.appendChild(mono);
-      }
-
-      const meta = document.createElement('div');
-      meta.className = 'tal-card-meta';
-      const name = document.createElement('h3');
-      name.textContent = person.name;
-      const tag = document.createElement('span');
-      tag.textContent = person.tag;
-      meta.append(name, tag);
-
-      card.append(media, meta);
-      grid.appendChild(card);
-    });
-  }
-
-  // ---------- scroll reveal (self-contained, doesn't depend on main.js) ----------
-  // Toggles .in-view both ways — added on entry, removed on exit — so
-  // each section's entrance genuinely replays every time you scroll back
-  // to it, whichever direction you came from. Reduced motion skips the
-  // observer entirely and just leaves everything visible.
-  function setupReveal() {
-    const els = document.querySelectorAll('.tal-reveal');
-    if (!els.length) return;
-    // talents-motion.js drives the entrances with scroll — show everything
-    // in its final state and let the choreography animate the wrappers
-    if (reduceMotion || !('IntersectionObserver' in window) || document.documentElement.classList.contains('cc-choreo')) {
-      els.forEach((el) => el.classList.add('in-view'));
-      return;
-    }
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        e.target.classList.toggle('in-view', e.isIntersecting);
-      });
-    }, { threshold: 0.15 });
-    els.forEach((el) => io.observe(el));
-  }
-
-  // ---------- apply modal ----------
-  // Same open/close contract as the brands contact modal (toggles
-  // modal-open on <html>/<body>, closes on backdrop, X, or Escape).
-  function setupApplyModal() {
-    const modal = document.getElementById('applyModal');
-    const backdrop = document.getElementById('applyModalBackdrop');
-    const closeBtn = document.getElementById('applyModalClose');
-    if (!modal) return;
-
-    const openers = [
-      'openApplyNav', 'openApplyHero', 'openApplyRoster',
-      'openApplyFaq', 'openApplyCloser', 'openApplyFooter',
-    ].map((id) => document.getElementById(id)).filter(Boolean);
-
-    let lastFocus = null;
-    function open(e) {
-      if (e) e.preventDefault();
-      lastFocus = document.activeElement;
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden', 'false');
-      document.documentElement.classList.add('modal-open');
-      document.body.classList.add('modal-open');
-      const first = modal.querySelector('input, select, button');
-      if (first) setTimeout(() => first.focus(), 40);
-    }
-    function close() {
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-      document.documentElement.classList.remove('modal-open');
-      document.body.classList.remove('modal-open');
-      if (lastFocus && lastFocus.focus) lastFocus.focus();
-    }
-
-    openers.forEach((el) => el.addEventListener('click', open));
-    if (backdrop) backdrop.addEventListener('click', close);
-    if (closeBtn) closeBtn.addEventListener('click', close);
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && modal.classList.contains('open')) close();
-    });
-  }
-
-  // ---------- apply form: saved on the server, viewable in the admin inbox ----------
-  function setupApplyForm() {
-    const form = document.getElementById('applyForm');
-    const msg = document.getElementById('applyFormMsg');
-    if (!form || !msg) return;
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      // native validation first
-      if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-      }
-      // at least one interest required (checkbox groups aren't covered by required)
-      const interests = Array.from(form.querySelectorAll('input[name="interests"]:checked')).map((c) => c.value);
-      if (!interests.length) {
-        msg.textContent = 'Please pick at least one interest so we can match you well.';
-        msg.className = 'tal-form-msg show err';
-        return;
-      }
-
-      const fields = {};
-      new FormData(form).forEach((v, k) => { if (k !== 'interests' && k !== 'website') fields[k] = v; });
-      fields.interests = interests;
-      const honeypot = form.querySelector('[name=website]');
-      const btn = form.querySelector('[type=submit]');
-      if (btn) btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/submissions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'talent', website: honeypot ? honeypot.value : '', fields }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
-        form.reset();
-        msg.textContent = "Application received! We'll reach out when there's a campaign that fits you.";
-        msg.className = 'tal-form-msg show';
-      } catch (err) {
-        msg.textContent = err.message && err.message.indexOf('fetch') === -1 ? err.message : 'Could not send right now. Please try again.';
-        msg.className = 'tal-form-msg show err';
-      } finally {
-        if (btn) btn.disabled = false;
-      }
-    });
-  }
-
-  // ---------- card FX: cursor spotlight (+ 3D tilt on why cards) ----------
-  function setupCardFx() {
-    if (reduceMotion || !window.matchMedia('(hover: hover)').matches) return;
-    document.querySelectorAll('.tal-why-card, .tal-step, .tal-faq-item').forEach((el) => {
-      const tilt = el.classList.contains('tal-why-card');
-      el.addEventListener('pointermove', (e) => {
-        const r = el.getBoundingClientRect();
-        const x = e.clientX - r.left, y = e.clientY - r.top;
-        el.style.setProperty('--mx', x + 'px');
-        el.style.setProperty('--my', y + 'px');
-        if (tilt) {
-          el.style.setProperty('--ry', ((x / r.width - 0.5) * 10).toFixed(2) + 'deg');
-          el.style.setProperty('--rx', ((0.5 - y / r.height) * 10).toFixed(2) + 'deg');
-        }
-      });
-      el.addEventListener('pointerleave', () => {
-        el.style.setProperty('--rx', '0deg');
-        el.style.setProperty('--ry', '0deg');
-      });
-    });
-  }
-
-  // ---------- roster: click-and-drag to scroll (mouse only) ----------
-  function setupRosterDrag() {
-    const el = document.getElementById('talRoster');
-    if (!el) return;
-    let down = false, startX = 0, startLeft = 0;
-    el.addEventListener('pointerdown', (e) => {
-      if (e.pointerType !== 'mouse' || e.button !== 0) return;
-      down = true; startX = e.clientX; startLeft = el.scrollLeft;
-      el.classList.add('dragging');
-    });
-    window.addEventListener('pointermove', (e) => {
-      if (down) el.scrollLeft = startLeft - (e.clientX - startX);
-    });
-    window.addEventListener('pointerup', () => {
-      if (!down) return;
-      down = false;
-      el.classList.remove('dragging');
-    });
-  }
-
-  // ---------- FAQ: smooth height animation, one open at a time ----------
-  // One-at-a-time also keeps the section within a single screen, so the
-  // section-jump behaviour stays intact.
-  function setupFaqAccordion() {
-    const items = Array.from(document.querySelectorAll('.tal-faq-item, .tq-item'));
-    const EASE = 'cubic-bezier(.22,1,.36,1)';
-    function close(d) {
-      const body = d.querySelector('p');
-      if (!d.open || !body) return;
-      if (reduceMotion) { d.open = false; return; }
-      const h = body.offsetHeight;
-      body.style.overflow = 'hidden';
-      body.animate(
-        [{ height: h + 'px', opacity: 1, marginBottom: getComputedStyle(body).marginBottom }, { height: '0px', opacity: 0, marginBottom: '0px' }],
-        { duration: 320, easing: EASE }
-      ).onfinish = () => { d.open = false; body.style.overflow = ''; };
-    }
-    function open(d) {
-      const body = d.querySelector('p');
-      d.open = true;
-      if (reduceMotion || !body) return;
-      const h = body.offsetHeight;
-      body.style.overflow = 'hidden';
-      body.animate(
-        [{ height: '0px', opacity: 0, marginBottom: '0px' }, { height: h + 'px', opacity: 1, marginBottom: getComputedStyle(body).marginBottom }],
-        { duration: 420, easing: EASE }
-      ).onfinish = () => { body.style.overflow = ''; };
-    }
-    items.forEach((d) => {
-      const s = d.querySelector('summary');
-      if (!s) return;
-      s.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (d.open) { close(d); return; }
-        items.forEach((o) => { if (o !== d) close(o); });
-        open(d);
-      });
-    });
-  }
-
-  // ---------- closer/footer: blurred ambient video (same as Brands contact) ----------
-  function setupCloserVideo() {
-    const video = document.getElementById('talCloserVideo');
-    const section = document.getElementById('tal-closer');
-    if (!video || !section) return;
-    function assign() {
-      // footer backdrop: the Twisted Tea campaign clip (matched loosely, so
-      // "Twisted Tea", "TwistedTea" or "Twisted Tea Canada" all work);
-      // falls back to any other brand video if Twisted Tea has none yet
-      const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
-      const data = (typeof MEDIA_DATA !== 'undefined' && MEDIA_DATA) ? MEDIA_DATA : {};
-      const resolve = (typeof resolveMedia === 'function') ? resolveMedia : (x) => x;
-      const key = Object.keys(data).find((k) => norm(k).includes('twistedtea'));
-      const tt = key ? ((data[key].videos || []).find((v) => v && v.src)) : null;
-      let pick = tt ? { src: resolve(tt.src) } : null;
-      if (!pick) {
-        const { videos } = collectMedia();
-        if (!videos.length) return;
-        pick = videos[videos.length > 1 ? 1 : 0];
-      }
-      if (video.getAttribute('src') === pick.src) return;
-      video.src = pick.src;
-      if (section.dataset.visible === '1' && !reduceMotion) video.play().catch(() => {});
-    }
-    assign();
-    document.addEventListener('mediaDataReady', assign);
-    if ('IntersectionObserver' in window) {
-      new IntersectionObserver((entries) => {
-        const vis = entries[0].isIntersecting;
-        section.dataset.visible = vis ? '1' : '0';
-        if (vis && video.src && !reduceMotion) video.play().catch(() => {});
-        else video.pause();
-      }, { threshold: 0.1 }).observe(section);
-    }
-  }
-
-  // ---------- boot ----------
-  function boot() {
-    startHeroVideoCycle();
-    buildRoster();
-    loadRoster();
-    setupReveal();
-    setupApplyModal();
-    setupApplyForm();
-    setupCardFx();
-    setupRosterDrag();
-    setupFaqAccordion();
-    setupCloserVideo();
-    // if main.js loads real media after us, rebuild the media-driven parts
-    document.addEventListener('mediaDataReady', () => {
-      startHeroVideoCycle();
-      buildRoster();
-    });
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
-})();
+<script src="js/main.js?v=65"></script>
+<script src="js/vendor/gsap.min.js?v=3.15.0"></script>
+<script src="js/vendor/ScrollTrigger.min.js?v=3.15.0"></script>
+<script src="js/vendor/lenis.min.js?v=1.3.26"></script>
+<script src="js/talents-motion.js?v=8"></script>
+<script src="js/talents.js?v=13"></script>
+<script src="js/forms.js?v=2"></script>
+<script src="js/cursor.js?v=3"></script>
+</body>
+</html>
