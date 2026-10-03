@@ -128,58 +128,55 @@ const heroVideoObserver = ('IntersectionObserver' in window)
   : null;
 
 function hydrateHeroMedia() {
+  // Videos are the priority. The wall's cards are labelled with 8 starter
+  // brands, but uploads live under whatever brands exist in the admin — so
+  // media is pooled from EVERY brand rather than matched to a card's label.
+  // Each column gets one video (up to MAX_HERO_VIDEOS), every other card a
+  // photo, and each photo/video is spread out so neighbours differ.
+  const videoPool = [];
+  const photoPool = [];
+  Object.keys(MEDIA_DATA).forEach((brand) => {
+    const { photos, videos } = mediaFor(brand);
+    videos.forEach((v) => { if (v && v.src) videoPool.push({ clip: v, poster: photos[0] || '' }); });
+    photos.forEach((p) => { if (p) photoPool.push(p); });
+  });
+  if (!videoPool.length && !photoPool.length) return;
+
   const columns = Array.from(document.querySelectorAll('.feed-col'));
-  const photoCounters = {};
-  const videoCounters = {};
   let videosPlaced = 0;
+  let photoN = 0;
 
   columns.forEach((col, colIndex) => {
-    const reels = Array.from(col.querySelectorAll('.reel[data-brand]'));
+    const reels = Array.from(col.querySelectorAll('.reel'));
     if (!reels.length) return;
-
-    // Each column contains the same set of cards twice, so translateY(-50%)
-    // loops seamlessly. Media must therefore be mirrored between the two
-    // halves, or the content visibly changes every time the loop wraps.
-    const half = Math.floor(reels.length / 2);
-
-    // one video per column: the first card (from a staggered starting
-    // point, so they don't line up) whose brand actually has a video
-    let videoSlot = -1;
-    for (let k = 0; k < half; k++) {
-      const j = (colIndex * 2 + k) % half;
-      if (mediaFor(reels[j].dataset.brand).videos.length) { videoSlot = j; break; }
-    }
+    // each column holds its cards twice so translateY(-50%) loops
+    // seamlessly — media is mirrored into the second half
+    const half = Math.floor(reels.length / 2) || reels.length;
+    const videoSlot = (colIndex * 2) % half;          // staggered heights
 
     for (let j = 0; j < half; j++) {
       const reel = reels[j];
       const twin = reels[j + half];
-      const brand = reel.dataset.brand;
-      const { photos, videos } = mediaFor(brand);
-      if (!photos.length && !videos.length) continue;
       if (reel.querySelector('.reel-media')) continue;
 
-      const useVideo = allowHeroVideo
-        && videos.length
-        && j === videoSlot
-        && videosPlaced < MAX_HERO_VIDEOS;
-
+      const useVideo = allowHeroVideo && videoPool.length && j === videoSlot && videosPlaced < MAX_HERO_VIDEOS;
       let node;
       if (useVideo) {
-        const n = videoCounters[brand] = (videoCounters[brand] || 0);
-        videoCounters[brand] = n + 1;
-        node = makeVideo(videos[n % videos.length], photos[0]);
+        const v = videoPool[videosPlaced % videoPool.length];
+        node = makeVideo(v.clip, v.poster || photoPool[videosPlaced % Math.max(1, photoPool.length)]);
         videosPlaced++;
-      } else if (photos.length) {
-        const n = photoCounters[brand] = (photoCounters[brand] || 0);
-        photoCounters[brand] = n + 1;
-        node = makePhoto(photos[n % photos.length]);
+      } else if (photoPool.length) {
+        node = makePhoto(photoPool[(photoN * 7 + colIndex) % photoPool.length]);
+        photoN++;
+      } else if (videoPool.length && allowHeroVideo && videosPlaced < MAX_HERO_VIDEOS) {
+        const v = videoPool[videosPlaced % videoPool.length];
+        node = makeVideo(v.clip, v.poster);
+        videosPlaced++;
       } else {
         continue;
       }
-
       attachMedia(reel, node);
-      // the twin gets an identical copy, keeping the loop invisible
-      if (twin) attachMedia(twin, node.cloneNode(true), useVideo);
+      if (twin) attachMedia(twin, node.cloneNode(true));
     }
   });
 }
@@ -203,6 +200,9 @@ function makeVideo(clip, fallbackPoster) {
   v.muted = true;
   v.loop = true;
   v.playsInline = true;
+  v.setAttribute('muted', '');
+  v.setAttribute('playsinline', '');
+  v.setAttribute('webkit-playsinline', '');
   v.preload = 'metadata';                 // first frame ready fast; full clip streams once playing
   v.autoplay = true;
   v.setAttribute('aria-hidden', 'true');
@@ -218,6 +218,7 @@ function attachMedia(reel, node, isVideo) {
   });
   if (node.tagName === 'VIDEO') {
     node.muted = true;                    // cloneNode drops the muted property
+    node.play && node.readyState >= 0 && heroVideoObserver == null && node.play().catch(() => {});
     if (heroVideoObserver) heroVideoObserver.observe(node);
     else node.autoplay = true;
   }
@@ -1041,6 +1042,7 @@ if (navLinks) {
 // there's no dedicated "contact" footage, so this reuses real uploaded
 // brand campaign video, purely for ambient motion/colour behind the form.
 (function contactBackgroundVideo() {
+  const CONTACT_VIDEO_BRAND = 'Little Buddha';   // <- which brand's video plays behind "Get in touch"
   const video = document.getElementById('contactVideo');
   const section = document.getElementById('contact');
   if (!video || !section) return;
@@ -1081,12 +1083,16 @@ if (navLinks) {
   }
 
   function assignVideo() {
-    // footer backdrop: the Lavelle campaign clip first (matched loosely, so
-    // "Lavelle", "LAVELLE" or "Lavelle Co." in the admin all work); any
-    // other brand's video only if Lavelle has none uploaded yet
+    // footer backdrop: the first uploaded video of CONTACT_VIDEO_BRAND (matched
+    // loosely, so "Little Buddha" also matches "Little Buddha Cocktail Co.").
+    // To use another brand's video, change that one name at the top of this
+    // block. If that brand has no video, any other brand's video is used,
+    // except Lavelle (the clip this replaced).
     const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
     const all = Object.keys(typeof MEDIA_DATA !== 'undefined' ? MEDIA_DATA : {});
-    const brands = all.filter((b) => norm(b).includes('lavelle')).concat(all.filter((b) => !norm(b).includes('lavelle')));
+    const want = norm(CONTACT_VIDEO_BRAND);
+    const isWanted = (b) => norm(b).includes(want);
+    const brands = all.filter(isWanted).concat(all.filter((b) => !isWanted(b) && !norm(b).includes('lavelle')));
     for (const brand of brands) {
       const vids = (MEDIA_DATA[brand] && MEDIA_DATA[brand].videos) || [];
       if (vids.length && vids[0].src && typeof resolveMedia === 'function') {
@@ -1144,38 +1150,7 @@ if (navLinks) {
   });
 })();
 
-// ---- contact form: saved on the server, viewable in the admin inbox ----
-const form = document.getElementById('contactForm');
-const formMsg = document.getElementById('formMsg');
-if (form && formMsg) {
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = form.querySelector('[type=submit]');
-    const fields = {};
-    new FormData(form).forEach((v, k) => { if (k !== 'website') fields[k] = v; });
-    const honeypot = form.querySelector('[name=website]');
-    if (btn) btn.disabled = true;
-    formMsg.classList.remove('show');
-    try {
-      const res = await fetch('/api/submissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'brand', website: honeypot ? honeypot.value : '', fields }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
-      form.reset();
-      formMsg.textContent = 'Thanks! We got your message and will be in touch soon.';
-      formMsg.style.color = '#3B4B63';
-    } catch (err) {
-      formMsg.textContent = err.message && err.message.indexOf('fetch') === -1 ? err.message : 'Could not send right now. Please try again.';
-      formMsg.style.color = '#C0321A';
-    } finally {
-      formMsg.classList.add('show');
-      if (btn) btn.disabled = false;
-    }
-  });
-}
+// ---- contact form: handled in js/forms.js ----
 
 
 // ---- performance: pause every CSS animation inside sections that are off
