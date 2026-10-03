@@ -1038,11 +1038,13 @@ if (navLinks) {
 
 
 // ---- contact section: blurred background video ----
-// Same honest situation as How It Works and the services showcase —
-// there's no dedicated "contact" footage, so this reuses real uploaded
-// brand campaign video, purely for ambient motion/colour behind the form.
+// There's no dedicated "contact" footage, so this reuses a video already
+// uploaded in the admin, purely for ambient motion/colour behind the CTA.
+// It plays the video uploaded for "How it works" step 2 (admin slot
+// slot-how-2). To use a different one, change CONTACT_VIDEO_SLOT.
 (function contactBackgroundVideo() {
-  const CONTACT_VIDEO_BRAND = 'Little Buddha';   // <- which brand's video plays behind "Get in touch"
+  const CONTACT_VIDEO_SLOT = 'slot-how-2';       // <- admin upload slot whose video plays behind "Get in touch"
+  const CONTACT_VIDEO_BRAND = 'Little Buddha';   // fallback brand if that slot has no video yet
   const video = document.getElementById('contactVideo');
   const section = document.getElementById('contact');
   if (!video || !section) return;
@@ -1050,25 +1052,54 @@ if (navLinks) {
 
   // Performance: a CSS blur on a full-screen playing video is re-computed
   // every frame and was the heaviest thing on the page. Instead the clip is
-  // drawn into a tiny canvas (48x27) a few dozen times a second and the
-  // browser simply stretches it to full size — upscaling that far produces
-  // the same soft, blurred look for almost no work.
-  const canvas = document.createElement('canvas');
+  // shrunk step by step to a tiny 24x14 picture (that IS the blur: every
+  // pixel averages a big patch of the video), then smoothly enlarged step by
+  // step to 384x216 before the browser stretches it to full size. Enlarging
+  // in small, smoothed steps is what keeps it soft: stretching the tiny
+  // picture in one go looks blocky in some browsers (Safari). All of this
+  // is a few thousand pixels per frame, so it stays cheap. For a stronger or
+  // lighter blur, change the 24x14 core below (bigger = sharper).
+  const canvas = document.createElement('canvas');   // the visible one (largest)
   canvas.className = 'contact-canvas';
-  canvas.width = 48;
-  canvas.height = 27;
   canvas.setAttribute('aria-hidden', 'true');
   video.after(canvas);
-  const ctx = canvas.getContext('2d', { alpha: false });
+  function smoothCtx(c, w, h) {
+    c.width = w;
+    c.height = h;
+    const x = c.getContext('2d', { alpha: false });
+    x.imageSmoothingEnabled = true;
+    x.imageSmoothingQuality = 'high';
+    return x;
+  }
+  const c192 = document.createElement('canvas');
+  const c96 = document.createElement('canvas');
+  const c48 = document.createElement('canvas');
+  const c24 = document.createElement('canvas');
+  const x192 = smoothCtx(c192, 192, 108);
+  const x96 = smoothCtx(c96, 96, 54);
+  const x48 = smoothCtx(c48, 48, 27);
+  const x24 = smoothCtx(c24, 24, 14);
+  const ctx = smoothCtx(canvas, 384, 216);
   let raf = null;
   let lastDraw = 0;
+
+  function paint() {
+    x192.drawImage(video, 0, 0, 192, 108);   // shrink...
+    x96.drawImage(c192, 0, 0, 96, 54);
+    x48.drawImage(c96, 0, 0, 48, 27);
+    x24.drawImage(c48, 0, 0, 24, 14);        // ...to the blurred core
+    x48.drawImage(c24, 0, 0, 48, 27);        // enlarge, smoothing each step
+    x96.drawImage(c48, 0, 0, 96, 54);
+    x192.drawImage(c96, 0, 0, 192, 108);
+    ctx.drawImage(c192, 0, 0, 384, 216);
+  }
 
   function draw(now) {
     raf = requestAnimationFrame(draw);
     if (now - lastDraw < 50) return;           // ~20fps is plenty for a blurred backdrop
     lastDraw = now;
     if (video.readyState >= 2) {
-      try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); canvas.classList.add('ready'); } catch (e) { /* not ready */ }
+      try { paint(); canvas.classList.add('ready'); } catch (e) { /* not ready */ }
     }
   }
   function start() {
@@ -1083,11 +1114,16 @@ if (navLinks) {
   }
 
   function assignVideo() {
-    // footer backdrop: the first uploaded video of CONTACT_VIDEO_BRAND (matched
-    // loosely, so "Little Buddha" also matches "Little Buddha Cocktail Co.").
-    // To use another brand's video, change that one name at the top of this
-    // block. If that brand has no video, any other brand's video is used,
-    // except Lavelle (the clip this replaced).
+    // 1) the video uploaded for the CONTACT_VIDEO_SLOT (How it works step 2)
+    const own = typeof slotPick === 'function' ? slotPick(CONTACT_VIDEO_SLOT).video : '';
+    if (own) {
+      if (video.getAttribute('src') !== own) video.src = own;
+      if (contactVisible) start();
+      return;
+    }
+    // 2) otherwise the first uploaded video of CONTACT_VIDEO_BRAND (matched
+    // loosely, so "Little Buddha" also matches "Little Buddha Cocktail Co."),
+    // then any other brand's video, except Lavelle (the clip this replaced).
     const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
     const all = Object.keys(typeof MEDIA_DATA !== 'undefined' ? MEDIA_DATA : {});
     const want = norm(CONTACT_VIDEO_BRAND);
