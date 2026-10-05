@@ -240,7 +240,8 @@
     if (contact) {
       gsap.timeline({ scrollTrigger: { trigger: contact, start: 'top bottom', end: 'top 30%', scrub: true } })
         .from('.contact-cta-link', { scale: 0.55, yPercent: 40, opacity: 0.1, ease: 'none' }, 0)
-        .from('.student-note', { y: 40, opacity: 0, ease: 'none' }, 0.35)
+        .from('.cc-sub', { y: 40, opacity: 0, ease: 'none' }, 0.3)
+        .from('.cc-actions', { y: 40, opacity: 0, ease: 'none' }, 0.45)
         .from('#contact .site-footer', { yPercent: 25, opacity: 0, ease: 'none' }, 0.45);
     }
 
@@ -387,11 +388,18 @@
       const max = ScrollTrigger.maxScroll(window);
       const list = [];
       secs.forEach((s) => {
-        const top = s.getBoundingClientRect().top + window.scrollY;
         const h = s.offsetHeight, v = window.innerHeight;
+        // a hidden section (e.g. The Work before it's published) has no real
+        // position. Counting it made a phantom stop exactly half a screen above
+        // the current spot, so swiping up only ever went half way.
+        if (!h) return;
+        const top = s.getBoundingClientRect().top + window.scrollY;
         if (h > v + 4) list.push(top, top + h - v); else list.push(top + (h - v) / 2);
       });
-      return [...new Set(list.map((y) => Math.round(Math.max(0, Math.min(max, y)))))].sort((a, b) => a - b);
+      const sorted = [...new Set(list.map((y) => Math.round(Math.max(0, Math.min(max, y)))))].sort((a, b) => a - b);
+      // stops under 40px apart count as one: a section only a few px taller
+      // than the screen would otherwise cost a swipe that barely moves
+      return sorted.filter((y, i) => i === 0 || y - sorted[i - 1] >= 40);
     };
     let animating = false, sy = null, sx = null;
     const blocked = () => root.classList.contains('modal-open') || !!document.querySelector('.nav-links.open');
