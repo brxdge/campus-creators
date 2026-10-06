@@ -170,6 +170,8 @@
 
       let animating = false;
       let failsafe = null;
+      let idleAt = 0;           // when the last glide released input
+      const release = () => { animating = false; idleAt = performance.now(); clearTimeout(failsafe); };
       // quick commit, soft landing: most of the distance is covered early,
       // then it eases gently into place. Shorter hops (steps inside a
       // pinned section) take less time than full-section moves.
@@ -178,9 +180,17 @@
       const glideTo = (y) => {
         animating = true;
         clearTimeout(failsafe);
-        failsafe = setTimeout(() => { animating = false; }, 1650);
-        lenis.scrollTo(y, { duration: durFor(Math.abs(y - window.scrollY)), easing: ease, lock: true, force: true,
-          onComplete: () => { animating = false; clearTimeout(failsafe); } });
+        const dur = durFor(Math.abs(y - window.scrollY));
+        // Failsafe: whatever happens to the animation, input is handed back
+        // shortly after it should have finished, and the page is put exactly
+        // on its target, so a glide can never leave the page stuck.
+        failsafe = setTimeout(() => {
+          if (!animating) return;
+          if (typeof lenis.reset === 'function') lenis.reset();
+          if (Math.abs(window.scrollY - y) > 2) lenis.scrollTo(y, { immediate: true, force: true });
+          release();
+        }, Math.round(dur * 1000) + 450);
+        lenis.scrollTo(y, { duration: dur, easing: ease, lock: true, force: true, onComplete: release });
       };
       const step = (dir) => {
         if (!stops.length) buildStops();
@@ -189,23 +199,46 @@
         if (target !== undefined) glideTo(target);
       };
 
-      let gestureLocked = false;
-      let releaseTimer = null;
+      // One deliberate gesture = one step. A gesture ends when the wheel goes
+      // quiet, REVERSES direction, or visibly speeds up again (a fresh flick
+      // riding on the previous one's momentum tail). Earlier versions treated
+      // any unbroken stream of wheel events as ONE gesture and silently
+      // dropped anything under 4px, so a trackpad / Magic Mouse tail, a
+      // smooth-scrolling mouse utility or Firefox's line-based wheel could
+      // swallow the next flick (worst at the bottom of the page, where people
+      // keep flicking down and then try to go back up).
+      const GAP_MS = 90;        // quiet time that separates two gestures
+      const MIN_PX = 3;         // travel needed to count as intent (stray 1-2px twitches don't)
+      let lastT = 0, lastSign = 0, lastAbs = 0, acc = 0, armed = 0;
+      const wheelPx = (e) => (e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * vh() : e.deltaY);
       const onWheel = (e) => {
         if (root.classList.contains('modal-open') || e.ctrlKey) return;
         // sideways trackpad swipes over the roster stay native
         if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
         e.preventDefault();
-        clearTimeout(releaseTimer);
-        releaseTimer = setTimeout(() => { gestureLocked = false; }, 180);
-        if (animating || gestureLocked || Math.abs(e.deltaY) < 4) return;
-        gestureLocked = true;
-        step(e.deltaY > 0 ? 1 : -1);
+        const d = wheelPx(e);
+        if (!d) return;
+        const now = performance.now();
+        const sign = d > 0 ? 1 : -1, abs = Math.abs(d);
+        const fresh = now - lastT > GAP_MS                         // went quiet, then started again
+          || sign !== lastSign                                     // changed direction
+          || abs > lastAbs * 1.6 + 6                               // sped up: a new flick on an old tail
+          || (abs >= 80 && !animating && now - idleAt > 80);       // still spinning hard after the glide landed
+        lastT = now; lastSign = sign; lastAbs = abs;
+        if (fresh) { acc = 0; armed = sign; }
+        if (animating || armed !== sign) return;
+        acc += d;
+        if (Math.abs(acc) < MIN_PX) return;
+        armed = 0; acc = 0;
+        step(sign);
       };
       const onKey = (e) => {
         if (root.classList.contains('modal-open')) return;
-        const tag = (document.activeElement && document.activeElement.tagName) || '';
-        if (/INPUT|TEXTAREA|SELECT/.test(tag)) return;
+        const ae = document.activeElement;
+        const tag = (ae && ae.tagName) || '';
+        if (/INPUT|TEXTAREA|SELECT/.test(tag) || (ae && ae.isContentEditable)) return;
+        // Space on a focused button / link / FAQ question must still activate it
+        if (e.key === ' ' && /^(BUTTON|A|SUMMARY)$/.test(tag)) return;
         let dir = 0;
         if (e.key === 'ArrowDown' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) dir = 1;
         else if (e.key === 'ArrowUp' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) dir = -1;
@@ -237,60 +270,7 @@
   // ============================================================
   // PHONES — native scroll, a few scrubbed moments, no pins
   // ============================================================
-
-  // ---------- phones: one swipe = one glide to the next section ----------
-  function touchGlide(secSel) {
-    if (typeof Lenis === 'undefined') return null;
-    const lenis = new Lenis({ smoothWheel: false, syncTouch: false });
-    lenis.on('scroll', ScrollTrigger.update);
-    const raf = (t) => lenis.raf(t * 1000);
-    gsap.ticker.add(raf);
-    const secs = $$(secSel);
-    const stopsNow = () => {
-      const max = ScrollTrigger.maxScroll(window);
-      const list = [];
-      secs.forEach((s) => {
-        const top = s.getBoundingClientRect().top + window.scrollY;
-        const h = s.offsetHeight, v = window.innerHeight;
-        if (h > v + 4) list.push(top, top + h - v); else list.push(top + (h - v) / 2);
-      });
-      return [...new Set(list.map((y) => Math.round(Math.max(0, Math.min(max, y)))))].sort((a, b) => a - b);
-    };
-    let animating = false, sy = null, sx = null;
-    const blocked = () => root.classList.contains('modal-open') || !!document.querySelector('.nav-links.open');
-    const onStart = (e) => { if (blocked()) { sy = null; return; } sy = e.touches[0].clientY; sx = e.touches[0].clientX; };
-    const onMove = (e) => {
-      if (sy === null) return;
-      const dy = sy - e.touches[0].clientY, dx = sx - e.touches[0].clientX;
-      if (Math.abs(dy) > Math.abs(dx) && e.cancelable) e.preventDefault();   // vertical: we handle it
-    };
-    const onEnd = (e) => {
-      if (sy === null || animating) { sy = null; return; }
-      const dy = sy - e.changedTouches[0].clientY, dx = sx - e.changedTouches[0].clientX;
-      sy = null;
-      if (Math.abs(dy) < 40 || Math.abs(dx) > Math.abs(dy)) return;
-      const stops = stopsNow(), y = window.scrollY;
-      const target = dy > 0 ? stops.find((s) => s > y + 4) : [...stops].reverse().find((s) => s < y - 4);
-      if (target === undefined) return;
-      animating = true;
-      setTimeout(() => { animating = false; }, 1600);
-      lenis.scrollTo(target, { duration: 0.95, easing: (x) => 1 - Math.pow(1 - x, 3), lock: true, force: true,
-        onComplete: () => { animating = false; } });
-    };
-    window.addEventListener('touchstart', onStart, { passive: true });
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('touchend', onEnd, { passive: true });
-    return () => {
-      window.removeEventListener('touchstart', onStart);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend', onEnd);
-      gsap.ticker.remove(raf);
-      lenis.destroy();
-    };
-  }
-
   mm.add('(max-width: 900px)', () => {
-    const cleanupTouch = touchGlide('#talHero, #tal-why, #tal-roster, #tal-how, #tal-faq, #tal-closer');
     if ($('#talHero .tal-hero-video')) {
       gsap.to('#talHero .tal-hero-video', { scale: 1.15, ease: 'none',
         scrollTrigger: { trigger: '#talHero', start: 'top top', end: 'bottom top', scrub: true } });
@@ -305,7 +285,6 @@
       gsap.fromTo(el, { clipPath: 'inset(0% 100% 0% 0%)' }, { clipPath: 'inset(-20% -20% -20% -20%)', ease: 'none',
         scrollTrigger: { trigger: el, start: 'top 98%', end: 'top 70%', scrub: true } });
     });
-    return () => { if (cleanupTouch) cleanupTouch(); };
   });
 
   // re-measure after fonts, media and any late layout change
