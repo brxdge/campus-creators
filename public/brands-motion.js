@@ -287,6 +287,8 @@
 
       let animating = false;
       let failsafe = null;
+      let idleAt = 0;           // when the last glide released input
+      const release = () => { animating = false; idleAt = performance.now(); clearTimeout(failsafe); };
       // quick commit, soft landing: most of the distance is covered early,
       // then it eases gently into place. Shorter hops (steps inside a
       // pinned section) take less time than full-section moves.
@@ -295,9 +297,17 @@
       const glideTo = (y) => {
         animating = true;
         clearTimeout(failsafe);
-        failsafe = setTimeout(() => { animating = false; }, 1650);
-        lenis.scrollTo(y, { duration: durFor(Math.abs(y - window.scrollY)), easing: ease, lock: true, force: true,
-          onComplete: () => { animating = false; clearTimeout(failsafe); } });
+        const dur = durFor(Math.abs(y - window.scrollY));
+        // Failsafe: whatever happens to the animation, input is handed back
+        // shortly after it should have finished, and the page is put exactly
+        // on its target, so a glide can never leave the page stuck.
+        failsafe = setTimeout(() => {
+          if (!animating) return;
+          if (typeof lenis.reset === 'function') lenis.reset();
+          if (Math.abs(window.scrollY - y) > 2) lenis.scrollTo(y, { immediate: true, force: true });
+          release();
+        }, Math.round(dur * 1000) + 450);
+        lenis.scrollTo(y, { duration: dur, easing: ease, lock: true, force: true, onComplete: release });
       };
       const nearestOwner = (y) => {
         let best = null, d = Infinity;
@@ -314,33 +324,57 @@
         if (dir > 0 && owners[target] === 'faq' && nearestOwner(y) === 'about' && typeof window.playAboutWipeTransition === 'function') {
           animating = true;
           clearTimeout(failsafe);
-          failsafe = setTimeout(() => { animating = false; }, 3000);
+          failsafe = setTimeout(release, 3000);
           window.playAboutWipeTransition(
             () => lenis.scrollTo(target, { immediate: true, force: true }),
-            () => { animating = false; clearTimeout(failsafe); }
+            release
           );
           return;
         }
         glideTo(target);
       };
 
-      // a trackpad flick fires a long tail of wheel events — the whole
-      // flick counts as ONE step; the next step needs a fresh gesture
-      let gestureLocked = false;
-      let releaseTimer = null;
+      // One deliberate gesture = one step. A gesture ends when the wheel goes
+      // quiet, REVERSES direction, or visibly speeds up again (a fresh flick
+      // riding on the previous one's momentum tail). Earlier versions treated
+      // any unbroken stream of wheel events as ONE gesture and silently
+      // dropped anything under 4px, so a trackpad / Magic Mouse tail, a
+      // smooth-scrolling mouse utility or Firefox's line-based wheel could
+      // swallow the next flick. It was worst at the bottom of the page, where
+      // people keep flicking down and then try to go back up; the keyboard
+      // has no such gate, which is why the arrow keys still worked.
+      const GAP_MS = 90;        // quiet time that separates two gestures
+      const MIN_PX = 3;         // travel needed to count as intent (stray 1-2px twitches don't)
+      let lastT = 0, lastSign = 0, lastAbs = 0, acc = 0, armed = 0;
+      const wheelPx = (e) => (e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * vh() : e.deltaY);
       const onWheel = (e) => {
         if (root.classList.contains('modal-open') || e.ctrlKey) return;
+        // sideways swipes (carousels, browser back/forward) stay native
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
         e.preventDefault();
-        clearTimeout(releaseTimer);
-        releaseTimer = setTimeout(() => { gestureLocked = false; }, 180);
-        if (animating || gestureLocked || Math.abs(e.deltaY) < 4) return;
-        gestureLocked = true;
-        step(e.deltaY > 0 ? 1 : -1);
+        const d = wheelPx(e);
+        if (!d) return;
+        const now = performance.now();
+        const sign = d > 0 ? 1 : -1, abs = Math.abs(d);
+        const fresh = now - lastT > GAP_MS                         // went quiet, then started again
+          || sign !== lastSign                                     // changed direction
+          || abs > lastAbs * 1.6 + 6                               // sped up: a new flick on an old tail
+          || (abs >= 80 && !animating && now - idleAt > 80);       // still spinning hard after the glide landed
+        lastT = now; lastSign = sign; lastAbs = abs;
+        if (fresh) { acc = 0; armed = sign; }
+        if (animating || armed !== sign) return;
+        acc += d;
+        if (Math.abs(acc) < MIN_PX) return;
+        armed = 0; acc = 0;
+        step(sign);
       };
       const onKey = (e) => {
         if (root.classList.contains('modal-open')) return;
-        const tag = (document.activeElement && document.activeElement.tagName) || '';
-        if (/INPUT|TEXTAREA|SELECT/.test(tag)) return;
+        const ae = document.activeElement;
+        const tag = (ae && ae.tagName) || '';
+        if (/INPUT|TEXTAREA|SELECT/.test(tag) || (ae && ae.isContentEditable)) return;
+        // Space on a focused button / link / FAQ question must still activate it
+        if (e.key === ' ' && /^(BUTTON|A|SUMMARY)$/.test(tag)) return;
         let dir = 0;
         if (e.key === 'ArrowDown' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) dir = 1;
         else if (e.key === 'ArrowUp' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) dir = -1;
@@ -388,37 +422,59 @@
       const max = ScrollTrigger.maxScroll(window);
       const list = [];
       secs.forEach((s) => {
-        const top = s.getBoundingClientRect().top + window.scrollY;
         const h = s.offsetHeight, v = window.innerHeight;
+        // a hidden section (e.g. The Work before it's published) has no real
+        // position. Counting it made a phantom stop exactly half a screen above
+        // the current spot, so swiping up only ever went half way.
+        if (!h) return;
+        const top = s.getBoundingClientRect().top + window.scrollY;
         if (h > v + 4) list.push(top, top + h - v); else list.push(top + (h - v) / 2);
       });
-      return [...new Set(list.map((y) => Math.round(Math.max(0, Math.min(max, y)))))].sort((a, b) => a - b);
+      const sorted = [...new Set(list.map((y) => Math.round(Math.max(0, Math.min(max, y)))))].sort((a, b) => a - b);
+      // stops under 40px apart count as one: a section only a few px taller
+      // than the screen would otherwise cost a swipe that barely moves
+      return sorted.filter((y, i) => i === 0 || y - sorted[i - 1] >= 40);
     };
-    let animating = false, sy = null, sx = null;
+    // The glide starts the moment a swipe is clearly vertical (a few px of
+    // finger travel), NOT when the finger lifts. Waiting for the lift left
+    // the page frozen under the finger and made every swipe feel late.
+    const TRIGGER_PX = 14;
+    let gliding = false, targetY = 0, lockT = null, fired = false, sy = null, sx = null;
     const blocked = () => root.classList.contains('modal-open') || !!document.querySelector('.nav-links.open');
-    const onStart = (e) => { if (blocked()) { sy = null; return; } sy = e.touches[0].clientY; sx = e.touches[0].clientX; };
+    const glide = (dir) => {
+      const stops = stopsNow();
+      // a swipe during a glide continues from where that glide is heading,
+      // so quick back-to-back swipes keep moving one section each
+      const from = gliding ? targetY : window.scrollY;
+      const target = dir > 0 ? stops.find((s) => s > from + 4) : [...stops].reverse().find((s) => s < from - 4);
+      if (target === undefined) return;
+      targetY = target;
+      gliding = true;
+      clearTimeout(lockT);
+      lockT = setTimeout(() => { gliding = false; }, 1200);
+      lenis.scrollTo(target, { duration: 0.8, easing: (x) => 1 - Math.pow(1 - x, 3), lock: true, force: true,
+        onComplete: () => { gliding = false; clearTimeout(lockT); } });
+    };
+    const onStart = (e) => {
+      fired = false;
+      if (blocked()) { sy = null; return; }
+      sy = e.touches[0].clientY; sx = e.touches[0].clientX;
+    };
     const onMove = (e) => {
       if (sy === null) return;
       const dy = sy - e.touches[0].clientY, dx = sx - e.touches[0].clientX;
-      if (Math.abs(dy) > Math.abs(dx) && e.cancelable) e.preventDefault();   // vertical: we handle it
+      if (Math.abs(dy) <= Math.abs(dx)) return;                  // sideways (carousels): leave it alone
+      if (e.cancelable) e.preventDefault();                       // vertical: we handle it
+      if (!fired && Math.abs(dy) >= TRIGGER_PX) { fired = true; glide(dy > 0 ? 1 : -1); }
     };
-    const onEnd = (e) => {
-      if (sy === null || animating) { sy = null; return; }
-      const dy = sy - e.changedTouches[0].clientY, dx = sx - e.changedTouches[0].clientX;
-      sy = null;
-      if (Math.abs(dy) < 40 || Math.abs(dx) > Math.abs(dy)) return;
-      const stops = stopsNow(), y = window.scrollY;
-      const target = dy > 0 ? stops.find((s) => s > y + 4) : [...stops].reverse().find((s) => s < y - 4);
-      if (target === undefined) return;
-      animating = true;
-      setTimeout(() => { animating = false; }, 1600);
-      lenis.scrollTo(target, { duration: 0.95, easing: (x) => 1 - Math.pow(1 - x, 3), lock: true, force: true,
-        onComplete: () => { animating = false; } });
-    };
+    const onEnd = () => { sy = null; fired = false; };
     window.addEventListener('touchstart', onStart, { passive: true });
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onEnd, { passive: true });
+    window.addEventListener('touchcancel', onEnd, { passive: true });
     return () => {
+      clearTimeout(lockT);
+      window.removeEventListener('touchcancel', onEnd);
       window.removeEventListener('touchstart', onStart);
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onEnd);
