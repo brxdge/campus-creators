@@ -1,4 +1,6 @@
-require('dotenv').config();
+// dotenv only reads a local .env file. On Railway the variables are set for us, so
+// if the package is missing the site must still start.
+try { require('dotenv').config(); } catch (e) { /* not installed: fine */ }
 
 const express = require('express');
 const path = require('path');
