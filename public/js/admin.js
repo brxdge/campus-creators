@@ -77,6 +77,7 @@
   Object.keys(GROUPS).forEach((k) => { VIEWS[k] = GROUPS[k]; });
   VIEWS['inbox-brand'] = { title: 'Brand enquiries', crumb: 'Inbox', desc: 'Messages sent through the contact form on the Brands page.', inbox: 'brand' };
   VIEWS['inbox-talent'] = { title: 'Talent applications', crumb: 'Inbox', desc: 'Applications sent through the Apply form on the Talents page.', inbox: 'talent' };
+  VIEWS['discovered'] = { title: 'Discovered creators', crumb: 'Creators', desc: 'Creators you saved in Creator Search and sent to the website. Private: only visible here, never on the public site.', discovered: true };
 
   // readable labels + the order fields are shown in
   const FIELD_LABELS = {
@@ -235,6 +236,7 @@
     try {
       const [data] = await Promise.all([api('/api/admin/brands'), loadSubmissions(), loadRoster(), loadCases()]);
       brands = data.brands || [];
+      if (window.CCDiscovered) window.CCDiscovered.badge(api);
       render();
     } catch (err) {
       view.innerHTML = '<p class="loading"></p>';
@@ -244,6 +246,11 @@
 
   function render() {
     view.innerHTML = '';
+    if (VIEWS[current].discovered) {
+      if (window.CCDiscovered) window.CCDiscovered.render({ api, el, toast, view, rerender: render });
+      else view.appendChild(el('p', 'loading', 'Discovered creators didn\u2019t load. Check js/admin-discovered.js is on the server.'));
+      return;
+    }
     if (current === 'dashboard') renderDashboard();
     else if (current === 'brands') renderBrands();
     else if (VIEWS[current].inbox) renderInbox(VIEWS[current].inbox);
