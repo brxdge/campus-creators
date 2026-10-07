@@ -1,5 +1,5 @@
 // ============================================================
-// Brands page — scroll choreography.
+// Brands page — scroll choreography.   build: 2026-10-07 v20
 //
 // One continuous motion sequence instead of section-by-section jumps:
 //   Lenis smooth scroll  ->  GSAP ScrollTrigger drives every section.
@@ -173,15 +173,16 @@
         .from('.showcase-carousel', { yPercent: 28, rotateX: 22, scale: 0.86, opacity: 0, transformPerspective: 1200, ease: 'none' }, 0.2);
     }
 
-    // ---------- HOW IT WORKS: pinned, steps deal in ----------
+    // ---------- HOW IT WORKS: steps deal in on arrival ----------
+    // Not pinned any more: the cards deal themselves in when you land on the
+    // section, so one scroll gesture always goes straight to the next section
+    // (a pin used to hide a second, third gesture inside this one).
     const process = $('#process');
     if (process) {
       const steps = $$('#howSteps .how-step');
-      const tl = gsap.timeline({
-        scrollTrigger: { trigger: process, start: 'top top', end: () => '+=' + vh() * 1.6, pin: true, scrub: 0.5 },
-      });
-      tl.from('#process .sec-head h2', { yPercent: 70, scale: 1.25, ease: 'power2.out', duration: 1 }, 0)
-        .from('#process .sec-head p', { opacity: 0, y: 30, duration: 0.5 }, 0.5);
+      const tl = gsap.timeline({ paused: true });
+      tl.from('#process .sec-head h2', { yPercent: 40, opacity: 0, scale: 1.12, ease: 'power3.out', duration: 0.8 }, 0)
+        .from('#process .sec-head p', { opacity: 0, y: 30, duration: 0.5 }, 0.3);
       steps.forEach((s, i) => {
         tl.fromTo(s, {
           xPercent: 60 + i * 15, yPercent: 30, rotate: 8 + i * 2, opacity: 0,
@@ -189,10 +190,15 @@
         }, {
           xPercent: 0, yPercent: 0, rotate: 0, opacity: 1,
           clipPath: 'inset(-10% -10% -25% -10% round 18px)',
-          duration: 1, ease: 'power3.out',
-        }, 0.6 + i * 0.45);
+          duration: 0.9, ease: 'power3.out',
+        }, 0.35 + i * 0.3);
       });
       if ($('#process .how-cta')) tl.from('#process .how-cta', { opacity: 0, y: 20, duration: 0.5 }, '>-0.3');
+      ScrollTrigger.create({
+        trigger: process, start: 'top 55%', end: 'bottom top',
+        onEnter: () => tl.play(),
+        onLeaveBack: () => tl.pause(0),
+      });
     }
 
     // ---------- CAMPUS ACTIVATIONS: orange panel opens ----------
@@ -267,9 +273,7 @@
           if (!sec.offsetHeight) return;          // hidden section (e.g. The Work before it's published)
           list.push = (...ys) => { ys.forEach(() => listIds.push(sec.id || 'band')); return push(...ys); };
           const pin = pins.find((t) => t.trigger === sec);
-          if (pin && sec.id === 'process') {
-            list.push(pin.start, pin.end);
-          } else if (pin) {
+          if (pin) {
             list.push(pin.start);
           } else {
             const top = sec.getBoundingClientRect().top + window.scrollY;
