@@ -1,7 +1,3 @@
-// dotenv only reads a local .env file. On Railway the variables are set for us, so
-// if the package is missing the site must still start.
-try { require('dotenv').config(); } catch (e) { /* not installed: fine */ }
-
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -81,7 +77,7 @@ try { app.use(require('compression')()); } catch (e) { /* optional: npm i compre
 // server-to-server call (no browser Origin header), so it has to sit BEFORE the
 // same-site guard below; it protects itself with CREATOR_SEARCH_SECRET and reads
 // its own body, so it also sits before the JSON parser. Admin side: see
-// app.use(discovered.admin) further down.
+// "Discovered creators" further down.
 const DATA_DIR = process.env.DATA_DIR || path.dirname(UPLOAD_DIR);
 // If creator-inbox.js is missing or fails to load, the rest of the site must
 // still start: this feature switches itself off and says why in the logs.
@@ -106,98 +102,6 @@ app.use('/api', (req, res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
   if (!sameOrigin(req)) return res.status(403).json({ error: 'Request blocked.' });
   next();
-});
-
-// ---- TikTok OAuth Routes ---------------------------------------------------
-app.get('/api/tiktok/callback', async (req, res) => {
-  const { code } = req.query;
-
-  if (!code) {
-    return res.status(400).json({ error: 'No authorization code received' });
-  }
-
-  try {
-    const tokenResponse = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_key: process.env.TIKTOK_CLIENT_KEY,
-        client_secret: process.env.TIKTOK_CLIENT_SECRET,
-        code: code,
-        grant_type: 'authorization_code',
-        redirect_uri: process.env.TIKTOK_REDIRECT_URI,
-      }),
-    });
-
-    const data = await tokenResponse.json();
-
-    if (data.access_token) {
-      process.env.TIKTOK_ACCESS_TOKEN = data.access_token;
-      if (data.refresh_token) {
-        process.env.TIKTOK_REFRESH_TOKEN = data.refresh_token;
-      }
-
-      return res.json({
-        success: true,
-        message: 'TikTok connected! Access token saved.',
-        access_token: data.access_token.substring(0, 20) + '...',
-        expires_in: data.expires_in,
-      });
-    } else {
-      return res.status(400).json({
-        error: data.error || 'Token exchange failed',
-        message: data.error_description
-      });
-    }
-  } catch (error) {
-    console.error('[tiktok-oauth] Error:', error);
-    return res.status(500).json({ error: 'Token exchange failed', details: error.message });
-  }
-});
-
-app.get('/api/tiktok/login', (req, res) => {
-  const redirectUri = process.env.TIKTOK_REDIRECT_URI || 'http://localhost:3000/api/tiktok/callback';
-  const authUrl = new URL('https://www.tiktok.com/v2/auth/authorize/');
-  authUrl.searchParams.append('client_key', process.env.TIKTOK_CLIENT_KEY);
-  authUrl.searchParams.append('scope', 'user.info.basic');
-  authUrl.searchParams.append('response_type', 'code');
-  authUrl.searchParams.append('redirect_uri', redirectUri);
-  authUrl.searchParams.append('state', 'cc-' + Date.now());
-
-  res.json({ authUrl: authUrl.toString() });
-});
-
-app.get('/api/tiktok/status', async (req, res) => {
-  const token = process.env.TIKTOK_ACCESS_TOKEN;
-  if (!token) return res.json({ connected: false, reason: 'No access token yet. Log in with TikTok first.' });
-  try {
-    const r = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url', {
-      headers: { Authorization: 'Bearer ' + token },
-    });
-    const data = await r.json();
-    const user = data && data.data && data.data.user;
-    if (user) return res.json({ connected: true, displayName: user.display_name, openId: user.open_id });
-    return res.json({ connected: false, reason: (data.error && data.error.message) || 'Token was rejected by TikTok.' });
-  } catch (e) {
-    return res.json({ connected: false, reason: e.message });
-  }
-});
-
-// TikTok Business API (TikTok One) sends the browser back here after an
-// authorization. For now this page only makes the redirect URL resolve: it does
-// not read, show, or store the authorization code. The token exchange gets added
-// once the TikTok app is approved and the exact exchange is confirmed.
-app.get('/api/tiktok/business-callback', (req, res) => {
-  res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Robots-Tag': 'noindex, nofollow' });
-  res.status(200).type('html').send('<!doctype html><html lang="en"><head><meta charset="utf-8">'
-    + '<meta name="viewport" content="width=device-width,initial-scale=1"><title>Campus Creators</title>'
-    + '<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#1A1A1C;color:#F2EFE6;'
-    + 'font-family:system-ui,sans-serif;text-align:center;padding:24px}a{color:#EB3F22}</style></head><body><main>'
-    + '<h1>You have been sent back from TikTok</h1>'
-    + '<p>Nothing else is needed on this page. You can close this tab or return to the admin dashboard.</p>'
-    + '<p><a href="/admin">Go to admin</a></p></main></body></html>');
 });
 
 app.use(express.json({ limit: '50kb' }));
@@ -390,7 +294,7 @@ app.post('/api/admin/upload', requireAdmin, (req, res) => {
     const checked = files.map((f) => ({ f, real: sniff(f.path) }));
     if (checked.some((c) => !c.real)) {
       discard();
-      return res.status(400).json({ error: "One of those files isn't a real image or video." });
+      return res.status(400).json({ error: 'One of those files isn’t a real image or video.' });
     }
 
     const added = checked.map(({ f, real }) => {
@@ -489,35 +393,8 @@ app.use(roster({ requireAdmin, dataDir: DATA_DIR }));
 const cases = require('./cases');
 app.use(cases({ requireAdmin, dataDir: DATA_DIR }));
 
-// ---- Creator database + AI Creator Search (admin only) ----------------------
-const creators = require('./creators');
-const creatorsRouter = creators({
-  requireAdmin, dataDir: DATA_DIR,
-  onDelete: (c) => { if (c.profile_image) unlinkMedia(c.profile_image); },
-});
-app.use(creatorsRouter);
-
 // ---- Discovered creators: what Creator Search sent (admin only) -------------
 if (discovered) app.use(discovered.admin);
-
-// creator profile photo: one image, checked the same way as other uploads
-app.post('/api/admin/creators/:id/photo', requireAdmin, (req, res) => {
-  upload.single('file')(req, res, (err) => {
-    const f = req.file;
-    const discard = () => { if (f) fs.unlink(f.path, () => {}); };
-    if (err) { discard(); return res.status(400).json({ error: uploadError(err) }); }
-    if (!f) return res.status(400).json({ error: 'Choose a photo.' });
-    const real = sniff(f.path);
-    if (!real || real.kind !== 'photo') { discard(); return res.status(400).json({ error: 'Use a JPG, PNG or WEBP photo.' }); }
-    let filename = f.filename;
-    const want = filename.replace(/\.[a-z0-9]+$/, '.' + real.ext);
-    if (want !== filename) { fs.renameSync(f.path, path.join(UPLOAD_DIR, want)); filename = want; }
-    const r = creatorsRouter.setPhoto(req.params.id, filename);
-    if (!r) { unlinkMedia(filename); return res.status(404).json({ error: 'Not found.' }); }
-    if (r.old) unlinkMedia(r.old);
-    res.json({ ok: true, creator: r.creator });
-  });
-});
 
 // ---- static ----------------------------------------------------------------
 app.get('/robots.txt', (req, res) => {
@@ -545,27 +422,11 @@ app.get(['/talents', '/talents/'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'talents.html'));
 });
 
-// Legal pages (needed for TikTok app review)
-app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, 'public', 'privacy.html')));
-app.get('/terms', (req, res) => res.sendFile(path.join(__dirname, 'public', 'terms.html')));
-
 // Server code must never be downloadable, even if it's copied into public/ by mistake.
 const SERVER_FILES = /\/(server|db|submissions|roster|cases|transfer-media|backup-live-media)\.js$|\/package(-lock)?\.json$|\.(env|map|log|bak)$/i;
 app.use((req, res, next) => {
   if (SERVER_FILES.test(req.path)) return res.status(404).end();
   next();
-});
-
-// Favicons: served from public/ or public/favicon/, whichever has them.
-// A missing icon answers a plain 404 (never the HTML page).
-const ICONS = ['favicon.ico', 'favicon-32.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'site.webmanifest'];
-app.get(ICONS.map((f) => '/' + f), (req, res) => {
-  const name = path.basename(req.path);
-  const found = [path.join(__dirname, 'public', name), path.join(__dirname, 'public', 'favicon', name)]
-    .find((p) => fs.existsSync(p));
-  if (!found) return res.status(404).end();
-  res.set('Cache-Control', 'public, max-age=86400');
-  res.sendFile(found);
 });
 
 function sendAdmin(req, res) {
@@ -574,11 +435,6 @@ function sendAdmin(req, res) {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 }
 app.get(['/admin', '/admin.html'], sendAdmin);
-
-// TikTok OAuth Test Page
-app.get('/tiktok-oauth-test', (req, res) => {
-  res.sendFile(path.join(__dirname, 'tiktok-oauth-test.html'));
-});
 
 app.use(express.static(path.join(__dirname, 'public'), {
   dotfiles: 'deny',
