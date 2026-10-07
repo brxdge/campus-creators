@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="/favicon.ico" sizes="48x48">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="manifest" href="/site.webmanifest">
+<link rel="icon" href="/favicon.ico?v=2" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
+<link rel="manifest" href="/site.webmanifest?v=2">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>Admin | Campus Creators</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=7">
+<link rel="stylesheet" href="css/admin.css?v=10">
 </head>
 <body>
 
@@ -43,6 +43,12 @@
       <p class="side-group">Inbox</p>
       <a href="#inbox-brand" data-view="inbox-brand"><span class="ico">&#9993;</span>Brand enquiries<span class="badge" data-badge="brand" hidden></span></a>
       <a href="#inbox-talent" data-view="inbox-talent"><span class="ico">&#9998;</span>Talent applications<span class="badge" data-badge="talent" hidden></span></a>
+
+      <p class="side-group">Creators</p>
+      <a href="#creator-search" data-view="creator-search"><span class="ico">&#10022;</span>Creator Search<span class="side-new">AI</span></a>
+      <a href="#my-creators" data-view="my-creators"><span class="ico">&#9829;</span>My Creators</a>
+      <a href="#creator-db" data-view="creator-db"><span class="ico">&#9776;</span>Creator Database</a>
+      <a href="#discovered" data-view="discovered"><span class="ico">&#9678;</span>Discovered creators<span class="badge" data-dc-badge hidden></span></a>
 
       <p class="side-group">Brands page</p>
       <a href="#brands" data-view="brands"><span class="ico">&#9733;</span>Creators in Action</a>
@@ -78,6 +84,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="js/admin.js?v=9"></script>
+<script src="js/admin.js?v=12"></script>
+<script src="js/admin-creators.js?v=1"></script>
+<script src="js/admin-discovered.js?v=1"></script>
 </body>
 </html>
