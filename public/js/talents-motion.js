@@ -1,16 +1,18 @@
 // ============================================================
-// Talents page — scroll choreography (same system as the Brands page).
+// Ambassadors page (talents.html) — scroll choreography.   build: 2026-10-07 v10
 //
 //   Hero ............ pinned; footage zooms, headline recedes while
 //                     Why Join rises over it on a rounded card
 //   Why Join ........ heading settles from oversized, cards wipe in
-//   Ambassadors ..... pinned; scroll pans the roster sideways
-//   From apply to paid  pinned; the four steps wipe in one by one
-//   Questions ....... intro holds, questions wipe in
+//   Ambassadors ..... wipes in, then the roster pans sideways on its own
+//   From apply to paid  the line draws and the four steps light up on arrival
+//   Questions ....... intro slides in, questions wipe in
 //   Closer .......... giant headline settles, stars drift, footer lifts
 //
-// One scroll gesture glides to the next section (or next step inside a
-// pinned one). Only transform / opacity / clip-path / scroll position are
+// One scroll gesture = one glide to the next section. Nothing holds the page
+// in place any more: the roster pan and the four steps play by themselves
+// when you land on them, so there are no extra scrolls hiding inside a
+// section. Only transform / opacity / clip-path / scroll position are
 // animated, and only on wrappers — the cards keep their own hover effects.
 // Phones get a lighter version; prefers-reduced-motion gets none.
 // ============================================================
@@ -92,29 +94,44 @@
         .from('#tal-why .tw-num', { yPercent: 60, opacity: 0, stagger: 0.12, ease: 'none' }, 0.25);
     }
 
-    // ---------- CAMPUS AMBASSADORS: pinned sideways pan ----------
+    // ---------- CAMPUS AMBASSADORS: wipes in, then pans sideways by itself ----------
     const rosterSec = $('#tal-roster');
     const roster = $('#talRoster');
     if (rosterSec && roster) {
       gsap.timeline({ scrollTrigger: { trigger: rosterSec, start: 'top bottom', end: 'top top', scrub: true } })
         .from('#tal-roster .tal-sec-head', { xPercent: -25, opacity: 0.2, ease: 'none' }, 0)
         .from(roster, { xPercent: 30, ease: 'none' }, 0);
-      gsap.to(roster, {
-        scrollLeft: () => Math.max(0, roster.scrollWidth - roster.clientWidth),
-        ease: 'none',
-        scrollTrigger: {
-          trigger: rosterSec, start: 'top top', end: () => '+=' + vh() * 1.3,
-          pin: true, scrub: 0.4, invalidateOnRefresh: true,
-        },
+
+      // Not pinned and not tied to scroll distance: once the section is in
+      // view the row drifts across to show the rest of the wall, then it's
+      // yours (drag it, or swipe it sideways). Touching it stops the drift.
+      let pan = null;
+      const stopPan = () => { if (pan) { pan.kill(); pan = null; } };
+      const startPan = () => {
+        stopPan();
+        const dist = Math.max(0, roster.scrollWidth - roster.clientWidth) - roster.scrollLeft;
+        if (dist < 40) return;
+        pan = gsap.to(roster, {
+          scrollLeft: roster.scrollLeft + dist,
+          duration: Math.min(7, Math.max(2.4, dist / 520)),
+          delay: 0.55, ease: 'power2.inOut', overwrite: true, onComplete: () => { pan = null; },
+        });
+      };
+      ScrollTrigger.create({
+        trigger: rosterSec, start: 'top 45%', end: 'bottom top',
+        onEnter: startPan,
+        onLeaveBack: () => { stopPan(); roster.scrollLeft = 0; },
       });
+      ['pointerdown', 'touchstart'].forEach((ev) => roster.addEventListener(ev, stopPan, { passive: true }));
+      roster.addEventListener('wheel', (e) => { if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) stopPan(); }, { passive: true });
     }
 
-    // ---------- FROM APPLY TO PAID: pinned; the line draws, steps light up ----------
+    // ---------- FROM APPLY TO PAID: the line draws and the steps light up on arrival ----------
     const how = $('#tal-how');
     if (how) {
       const steps = $$('#tal-how .ts-step');
-      const tl = gsap.timeline({ scrollTrigger: { trigger: how, start: 'top top', end: () => '+=' + vh() * 1.3, pin: true, scrub: 0.5 } });
-      tl.from('#tal-how .ts-head', { yPercent: 70, scale: 1.3, duration: 1, ease: 'power2.out' }, 0)
+      const tl = gsap.timeline({ paused: true });
+      tl.from('#tal-how .ts-head', { yPercent: 40, opacity: 0, scale: 1.12, duration: 0.8, ease: 'power3.out' }, 0)
         .from('#tal-how .ts-line', { opacity: 0, duration: 0.3 }, 0.35)
         .fromTo('#tal-how .ts-line i', { scaleX: 0 }, { scaleX: 1, duration: 2, ease: 'none' }, 0.5);
       steps.forEach((s, i) => {
@@ -122,13 +139,19 @@
           .from(s.querySelector('.ts-num'), { yPercent: 60, opacity: 0, duration: 0.5, ease: 'power3.out' }, 0.55 + i * 0.5)
           .from([s.querySelector('h3'), s.querySelector('p')], { y: 24, opacity: 0, stagger: 0.08, duration: 0.45, ease: 'power3.out' }, 0.65 + i * 0.5);
       });
+      tl.timeScale(1.25);
+      ScrollTrigger.create({
+        trigger: how, start: 'top 55%', end: 'bottom top',
+        onEnter: () => tl.play(),
+        onLeaveBack: () => tl.pause(0),
+      });
     }
 
-    // ---------- QUESTIONS: intro settles, rows wipe in ----------
+    // ---------- QUESTIONS: intro slides in, rows wipe in ----------
     const faq = $('#tal-faq');
     if (faq) {
       gsap.timeline({ scrollTrigger: { trigger: faq, start: 'top 95%', end: 'top 25%', scrub: true } })
-        .from('#tal-faq .tq-intro', { xPercent: -15, scale: 1.2, transformOrigin: 'left center', opacity: 0.2, ease: 'none' }, 0)
+        .from('#tal-faq .tq-intro', { xPercent: -10, opacity: 0.2, ease: 'none' }, 0)
         .fromTo('#tal-faq .tq-item',
           { clipPath: 'inset(0% 0% 0% 100%)' },
           { clipPath: 'inset(-10% -10% -10% -10%)', stagger: 0.1, ease: 'none' }, 0.15);
