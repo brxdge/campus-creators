@@ -81,8 +81,15 @@ try { app.use(require('compression')()); } catch (e) { /* optional: npm i compre
 // its own body, so it also sits before the JSON parser. Admin side: see
 // app.use(discovered.admin) further down.
 const DATA_DIR = process.env.DATA_DIR || path.dirname(UPLOAD_DIR);
-const discovered = require('./creator-inbox')({ requireAdmin, dataDir: DATA_DIR });
-app.use(discovered.receiver);
+// If creator-inbox.js is missing or fails to load, the rest of the site must
+// still start: this feature switches itself off and says why in the logs.
+let discovered = null;
+try {
+  discovered = require('./creator-inbox')({ requireAdmin, dataDir: DATA_DIR });
+  app.use(discovered.receiver);
+} catch (e) {
+  console.error('[warn] Discovered creators is switched off:', e.message);
+}
 
 // Cross-site request guard: any state-changing API call must come from this
 // site. Browsers always send Origin on POST/PATCH/DELETE fetches, so a
@@ -489,7 +496,7 @@ const creatorsRouter = creators({
 app.use(creatorsRouter);
 
 // ---- Discovered creators: what Creator Search sent (admin only) -------------
-app.use(discovered.admin);
+if (discovered) app.use(discovered.admin);
 
 // creator profile photo: one image, checked the same way as other uploads
 app.post('/api/admin/creators/:id/photo', requireAdmin, (req, res) => {
