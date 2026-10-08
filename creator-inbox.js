@@ -9,6 +9,7 @@
 //
 //   GET    /api/admin/discovered          (admin only) list what arrived
 //   GET    /api/admin/discovered/count    (admin only) totals, for the sidebar badge
+//   GET    /api/admin/discovered/:id/avatar  (admin only) the creator's photo
 //   POST   /api/admin/discovered/seen     (admin only) mark as seen (or back to new)
 //   POST   /api/admin/discovered/delete   (admin only) delete several
 //   DELETE /api/admin/discovered/:id      (admin only) delete one
@@ -16,6 +17,12 @@
 // These are prospects, not ambassadors: nothing here is ever shown on the
 // public site. It is stored in discovered-creators.json next to
 // submissions.json (on Railway: the /data volume).
+//
+// Photos: TikTok profile photo links expire after a while and the site's
+// security rules block images from other websites, so when a creator arrives
+// with a photo link the website downloads its own private copy (only from
+// TikTok's image servers, small images only) and shows that in the admin. If
+// the link has already expired, the card simply shows initials.
 //
 // Setup: set CREATOR_SEARCH_SECRET in Railway Variables (32+ random
 // characters) and put the same value in Creator Search. Until it is set the
@@ -36,6 +43,11 @@ const RECEIVE_PATH = '/api/creator-search';
 const HANDLE_RE = /^[A-Za-z0-9._]{1,40}$/;
 const RESERVED = /^(__proto__|constructor|prototype|hasownproperty|tostring|valueof)$/i;
 const MAX_BODY = '2mb';
+const MAX_AVATAR = 1.5 * 1024 * 1024;                 // bytes
+const AVATAR_TIMEOUT_MS = 7000;
+const AVATAR_PARALLEL = 4;
+// only TikTok's own image servers are ever fetched
+const AVATAR_HOSTS = /(^|\.)(tiktokcdn(-us|-eu)?\.com|ibyteimg\.com|byteimg\.com|tiktokv\.(com|us|eu))$/i;
 const MAX_PER_REQUEST = 500;
 const MAX_STORED = 5000;
 const MAX_COLLECTIONS = 20;
@@ -106,6 +118,21 @@ function collectionNames(v) {
   };
   if (Array.isArray(v)) v.forEach(add); else add(v);
   return out;
+}
+
+function imageUrl(v) {
+  if (v && typeof v === 'object') v = Array.isArray(v) ? v[0] : (v.url || v.href || (Array.isArray(v.urlList) && v.urlList[0]));
+  const s = oneLine(v, 900);
+  if (!/^https?:\/\//i.test(s) || /\s/.test(s)) return undefined;     // which hosts are fetched is decided later, and only https to TikTok by default
+  try { return new URL(s).href; } catch (e) { return undefined; }
+}
+// host + path, without the changing signature, to tell "same photo" from "new photo"
+function photoKey(href) { try { const u = new URL(href); return u.host + u.pathname; } catch (e) { return ''; } }
+function sniffImage(b) {
+  if (b.length > 12 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'jpg';
+  if (b.length > 12 && b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG') return 'png';
+  if (b.length > 12 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'webp';
+  return null;
 }
 
 // ---------- reading what Creator Search sent ----------
@@ -205,6 +232,9 @@ function normalise(raw, fallbackCollection) {
   if (cat !== undefined) out.businessCategory = oneLine(cat, 60);
   const since = dateOnly(pick(m, ['ontiktoksince', 'since', 'createdat', 'createtime', 'joined']));
   if (since) out.tiktokSince = since;
+  const photo = imageUrl(pick(m, ['avatar', 'avatarurl', 'avatarlarger', 'avatarmedium', 'avatarthumb', 'originalavatarurl',
+    'profilepicture', 'profileimage', 'profilepic', 'picture', 'photo', 'image']));
+  if (photo) out.avatarSrc = photo;                    // used once to download a copy, never stored
   const own = collectionNames(pick(m, COLLECTION_KEYS));
   out.collections = own.length ? own : fallbackCollection;
   return out;
@@ -217,7 +247,10 @@ module.exports = function creatorInbox(opts = {}) {
   if (typeof requireAdmin !== 'function') throw new Error('creator-inbox: requireAdmin middleware is required');
   const getSecret = typeof opts.secret === 'function' ? opts.secret : () => opts.secret || process.env.CREATOR_SEARCH_SECRET || '';
   const file = path.join(dataDir, 'discovered-creators.json');
+  const avatarDir = path.resolve(dataDir, 'discovered-avatars');
   fs.mkdirSync(dataDir, { recursive: true });
+  // tests can swap these; in production only https links to TikTok's image servers are fetched
+  const photoAllowed = typeof opts.photoAllowed === 'function' ? opts.photoAllowed : (u) => u.protocol === 'https:' && AVATAR_HOSTS.test(u.hostname);
 
   // { nextId, items: [...], deliveries: [last 20] }. nextId only goes up.
   function read() {
@@ -232,6 +265,59 @@ module.exports = function creatorInbox(opts = {}) {
     const tmp = file + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(s, null, 2));
     fs.renameSync(tmp, file);
+  }
+
+  // ---------- profile photos ----------
+  const queue = [];
+  const queued = new Set();
+  let active = 0;
+  const unlinkPhoto = (name) => { if (name && /^\d+\.(jpg|png|webp)$/.test(name)) fs.unlink(path.join(avatarDir, name), () => {}); };
+
+  async function fetchPhoto(job) {
+    if (typeof fetch !== 'function') return;                    // very old Node: photos stay off
+    let u;
+    try { u = new URL(job.src); } catch (e) { return; }
+    if (!photoAllowed(u)) return;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), opts.photoTimeoutMs || AVATAR_TIMEOUT_MS);
+    try {
+      const r = await fetch(u.href, { signal: ctrl.signal, redirect: 'error', headers: { Accept: 'image/*', 'User-Agent': 'Mozilla/5.0 (compatible; CampusCreatorsAdmin)' } });
+      if (!r.ok || !r.body) return;
+      if (Number(r.headers.get('content-length')) > MAX_AVATAR) return;
+      const chunks = [];
+      let size = 0;
+      for await (const c of r.body) {
+        size += c.length;
+        if (size > MAX_AVATAR) { ctrl.abort(); return; }
+        chunks.push(c);
+      }
+      const buf = Buffer.concat(chunks);
+      const ext = sniffImage(buf);                              // the bytes decide, not the link or the headers
+      if (!ext) return;
+      fs.mkdirSync(avatarDir, { recursive: true });
+      const name = job.id + '.' + ext;
+      fs.writeFileSync(path.join(avatarDir, name + '.tmp'), buf);
+      fs.renameSync(path.join(avatarDir, name + '.tmp'), path.join(avatarDir, name));
+      const st = read();                                        // fresh copy: the creator may have been deleted meanwhile
+      const it = st.items.find((i) => i.id === job.id);
+      if (!it) { unlinkPhoto(name); return; }
+      if (it.avatarFile && it.avatarFile !== name) unlinkPhoto(it.avatarFile);
+      it.avatarFile = name;
+      it.avatarKey = photoKey(job.src);
+      it.avatarAt = Date.now();
+      write(st);
+    } catch (e) { /* expired link, blocked, slow: the card shows initials */ } finally { clearTimeout(timer); }
+  }
+  function pump() {
+    while (active < AVATAR_PARALLEL && queue.length) {
+      const job = queue.shift();
+      active += 1;
+      fetchPhoto(job).catch(() => {}).then(() => { active -= 1; queued.delete(job.id); pump(); });
+    }
+  }
+  function enqueuePhotos(jobs) {
+    for (const j of jobs) if (!queued.has(j.id)) { queued.add(j.id); queue.push(j); }
+    pump();
   }
 
   // ===== receiver (public address, protected by the secret) =====
@@ -302,17 +388,21 @@ module.exports = function creatorInbox(opts = {}) {
     const now = new Date().toISOString();
     const store = read();
     let added = 0, updated = 0, full = 0;
+    const photoJobs = [];
     if (!isTest) {
       const byHandle = new Map(store.items.map((i) => [String(i.handle).toLowerCase(), i]));
       for (const n of people) {
         const key = n.handle.toLowerCase();
         const ex = byHandle.get(key);
+        const photoSrc = n.avatarSrc;
+        delete n.avatarSrc;
         if (ex) {
           for (const k of ['nickname', 'bio', 'bioLink', 'followers', 'following', 'videos', 'likes', 'verified',
             'business', 'private', 'seller', 'businessCategory', 'tiktokSince']) if (n[k] !== undefined) ex[k] = n[k];
           ex.collections = (ex.collections || []).concat(n.collections.filter((c) => !(ex.collections || []).includes(c))).slice(0, MAX_COLLECTIONS);
           ex.updatedAt = now;
           ex.deliveries = (ex.deliveries || 1) + 1;
+          if (photoSrc && (ex.avatarKey !== photoKey(photoSrc) || !ex.avatarFile)) photoJobs.push({ id: ex.id, src: photoSrc });
           updated += 1;
         } else if (store.items.length >= MAX_STORED) {
           full += 1;
@@ -325,6 +415,7 @@ module.exports = function creatorInbox(opts = {}) {
           store.nextId += 1;
           store.items.push(item);
           byHandle.set(key, item);
+          if (photoSrc) photoJobs.push({ id: item.id, src: photoSrc });
           added += 1;
         }
       }
@@ -333,6 +424,8 @@ module.exports = function creatorInbox(opts = {}) {
     store.deliveries.unshift({ at: now, test: isTest, received: people.length, added, updated, skipped: skipped + full, collection });
     store.deliveries = store.deliveries.slice(0, 20);
     try { write(store); } catch (e) { console.error('[creator-inbox] could not save:', e.message); return res.status(500).json({ error: 'The website could not save the creators.' }); }
+
+    enqueuePhotos(photoJobs);                                     // after saving; never delays the reply
 
     if (full) return res.status(507).json({ ok: false, error: 'The inbox is full (' + MAX_STORED + '). Delete some creators in the admin, then send again.', received: people.length, added, updated });
     res.json({ ok: true, test: isTest || undefined, received: people.length, added, updated, skipped: skipped || undefined, collection: collection || undefined });
@@ -356,7 +449,11 @@ module.exports = function creatorInbox(opts = {}) {
     for (const i of items) for (const c of (i.collections || [])) counts.set(c, (counts.get(c) || 0) + 1);
     const secret = getSecret();
     res.json({
-      items,
+      items: items.map((i) => {
+        const o = Object.assign({}, i, { avatar: !!i.avatarFile, avatarAt: i.avatarAt || 0 });
+        delete o.avatarFile; delete o.avatarKey;
+        return o;
+      }),
       total: items.length,
       unseen: items.filter((i) => !i.seen).length,
       collections: [...counts].map(([name, n]) => ({ name, count: n })).sort((a, b) => a.name.localeCompare(b.name)),
@@ -370,6 +467,14 @@ module.exports = function creatorInbox(opts = {}) {
     res.set('Cache-Control', 'no-store');
     const items = read().items;
     res.json({ total: items.length, unseen: items.filter((i) => !i.seen).length });
+  });
+
+  // the private copy of a creator's photo (signed-in admins only)
+  admin.get('/api/admin/discovered/:id/avatar', requireAdmin, (req, res) => {
+    const it = read().items.find((i) => i.id === Number(req.params.id));
+    if (!it || !/^\d+\.(jpg|png|webp)$/.test(it.avatarFile || '')) return res.status(404).end();
+    res.set('Cache-Control', 'private, max-age=86400');
+    res.sendFile(path.join(avatarDir, it.avatarFile), (err) => { if (err && !res.headersSent) res.status(404).end(); });
   });
 
   admin.post('/api/admin/discovered/seen', requireAdmin, json, (req, res) => {
@@ -389,7 +494,7 @@ module.exports = function creatorInbox(opts = {}) {
     const s = read();
     const keep = s.items.filter((i) => !want.has(i.id));
     const removed = s.items.length - keep.length;
-    if (removed) { s.items = keep; write(s); }
+    if (removed) { s.items.filter((i) => want.has(i.id)).forEach((i) => unlinkPhoto(i.avatarFile)); s.items = keep; write(s); }
     res.json({ ok: true, removed, unseen: keep.filter((i) => !i.seen).length });
   });
 
@@ -398,6 +503,7 @@ module.exports = function creatorInbox(opts = {}) {
     const s = read();
     const keep = s.items.filter((i) => i.id !== id);
     if (keep.length === s.items.length) return res.status(404).json({ error: 'Not found.' });
+    unlinkPhoto((s.items.find((i) => i.id === id) || {}).avatarFile);
     s.items = keep;
     write(s);
     res.json({ ok: true, unseen: keep.filter((i) => !i.seen).length });
@@ -407,4 +513,4 @@ module.exports = function creatorInbox(opts = {}) {
 };
 
 // exposed for tests
-module.exports._internals = { normalise, extract, count, dateOnly };
+module.exports._internals = { normalise, extract, count, dateOnly, AVATAR_HOSTS, sniffImage, photoKey };
