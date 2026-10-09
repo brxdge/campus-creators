@@ -1028,7 +1028,34 @@ label{font-size:13px;font-weight:700;color:var(--ink);}
   text-transform:uppercase;color:#fff;line-height:1.15;
   text-shadow:0 2px 14px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.6);
 }
-.how-card p{font-size:13px;letter-spacing:.3px;text-transform:uppercase;color:rgba(255,255,255,.6);margin:0;line-height:1.5;}
+.how-media h3{transition:transform .38s cubic-bezier(.22,1,.36,1),opacity .25s ease;}
+/* each step's one-line description sits INSIDE its media card and only
+   shows while the card is hovered (tapped on a touch screen, or focused from
+   the keyboard). It stays in the page, so screen readers still read it. */
+.how-media .how-desc{
+  position:absolute;left:0;right:0;bottom:0;z-index:2;margin:0;
+  padding:44px 18px 18px;text-align:center;
+  font-size:13px;line-height:1.5;letter-spacing:.3px;text-transform:uppercase;color:#fff;
+  text-shadow:0 1px 8px rgba(0,0,0,.6);
+  background:linear-gradient(to top,rgba(8,8,10,.94) 0%,rgba(8,8,10,.82) 58%,rgba(8,8,10,0) 100%);
+  opacity:0;transform:translateY(16px);pointer-events:none;
+  transition:opacity .28s ease,transform .38s cubic-bezier(.22,1,.36,1);
+}
+.how-media .how-desc::before{
+  content:'';display:block;width:28px;height:2px;margin:0 auto 10px;border-radius:2px;background:var(--red);
+}
+@media (hover:hover){
+  .how-step:hover .how-desc{opacity:1;transform:none;}
+  .how-step:hover .how-media h3{transform:translateY(-14px);}
+}
+.how-card:focus-visible .how-desc,
+.how-media.show-desc .how-desc{opacity:1;transform:none;}
+.how-card:focus-visible .how-media h3,
+.how-media.show-desc h3{transform:translateY(-14px);}
+.how-card:focus-visible{outline:2px solid var(--red);outline-offset:4px;border-radius:14px;}
+@media (prefers-reduced-motion: reduce){
+  .how-media .how-desc,.how-media h3{transition:none;transform:none !important;}
+}
 
 @media (max-width:900px){
   .how-steps{
@@ -1944,9 +1971,9 @@ video.phone-media::-webkit-media-controls,
   #process .sec-head{margin-bottom:16px;}
   #process .sec-head h2{font-size:clamp(34px,11vw,46px);}
   .how-step{flex:0 0 min(210px,58vw);}
-  .how-media{margin-bottom:10px;max-height:calc(100svh - 360px);aspect-ratio:auto;height:min(262px,calc(100svh - 360px));}
+  .how-media{margin-bottom:0;max-height:calc(100svh - 360px);aspect-ratio:auto;height:min(262px,calc(100svh - 360px));}
   .how-media h3{font-size:18px;}
-  .how-card p{font-size:11.5px;line-height:1.45;}
+  .how-media .how-desc{font-size:11.5px;line-height:1.45;}
   .how-cta{display:none;}
 
   /* ACTIVATION BAND */
@@ -2071,15 +2098,13 @@ video.phone-media::-webkit-media-controls,
   }
   .how-step{flex:none;margin-top:0 !important;min-width:0;}
   .how-media{
-    height:calc((100svh - 450px) / 2);min-height:86px;max-height:210px;
-    aspect-ratio:auto;margin-bottom:6px;border-radius:10px;
+    height:calc((100svh - 360px) / 2);min-height:86px;max-height:240px;
+    aspect-ratio:auto;margin-bottom:0;border-radius:10px;
   }
   .how-media h3{font-size:13px;line-height:1.15;padding:0 8px;}
   .how-num{transform:scale(.8);transform-origin:top left;}
-  .how-card p{
-    font-size:10.5px;line-height:1.4;
-    display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;
-  }
+  .how-media .how-desc{font-size:10.5px;line-height:1.4;padding:30px 9px 10px;}
+  .how-media .how-desc::before{width:22px;margin-bottom:6px;}
 
   /* The Work: all cases as a stacked list (cover left, text right) */
   .work-scroller-wrap{display:block;margin-top:0;}
@@ -2115,7 +2140,6 @@ video.phone-media::-webkit-media-controls,
   .tal-card-media.has-video::after{width:20px;height:20px;font-size:8px;right:6px;bottom:6px;}
 }
 @media (max-width:760px) and (max-height:780px){
-  .how-card p{-webkit-line-clamp:3;}
   .how-steps{gap:10px 10px;}
 }
 @media (max-width:760px) and (max-height:700px){
@@ -2731,11 +2755,26 @@ html.lenis{scroll-behavior:auto !important;}
   #process .sec-head h2{font-size:clamp(52px,min(11vw,14.5vh),170px);padding-top:.25em;}
   #process .sec-head p{margin-top:6px;font-size:clamp(13px,1.6vh,16px);}
   .how-step:nth-child(2),.how-step:nth-child(4){margin-top:0;}
-  .how-media{aspect-ratio:auto;height:clamp(150px,calc(100vh - 480px),360px);}
+  .how-media{aspect-ratio:auto;height:clamp(150px,calc(100vh - 436px),400px);margin-bottom:0;}
   .how-media h3{font-size:clamp(16px,min(1.7vw,2.6vh),26px);}
-  .how-card p{font-size:12.5px;line-height:1.45;margin-top:10px;}
+  .how-media .how-desc{font-size:12.5px;line-height:1.45;}
   .how-cta{margin-top:clamp(12px,2vh,24px);}
   .how-cta .btn{padding:12px 24px;}
+}
+/* Small cards (phones, and short laptop windows) have no spare room to stack
+   a title above a caption, so the caption takes over the whole card for as long
+   as it is showing and the title steps aside. */
+@media (min-width:761px) and (max-height:700px){
+  .how-media .how-desc{font-size:11.5px;line-height:1.4;}
+}
+@media (max-width:760px), (min-width:761px) and (max-height:700px){
+  .how-media .how-desc{
+    top:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:38px 12px 12px;background:rgba(8,8,10,.82);
+  }
+  .how-step:hover .how-media h3,
+  .how-card:focus-visible .how-media h3,
+  .how-media.show-desc h3{opacity:0;transform:none;}
 }
 
 /* choreography: the activation band is full height from the start, so it
