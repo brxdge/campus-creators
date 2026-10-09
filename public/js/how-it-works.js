@@ -116,6 +116,31 @@
     document.addEventListener('mediaDataReady', assignClips);
   }
 
+  // ---------- touch: tap a card to show / hide its description ----------
+  // On a mouse device the description appears on hover (pure CSS). A touch
+  // screen has no hover, so a tap toggles it instead. 'click' is used rather
+  // than 'touchstart' so swiping the row of cards never opens one by accident.
+  function setupDescReveal() {
+    if (window.matchMedia && window.matchMedia('(hover: hover)').matches) return;
+    const steps = Array.from(document.querySelectorAll('#howSteps .how-step'));
+    if (!steps.length) return;
+    const mediaOf = (step) => step.querySelector('.how-media');
+    steps.forEach((step) => {
+      step.addEventListener('click', () => {
+        const media = mediaOf(step);
+        if (!media) return;
+        const open = !media.classList.contains('show-desc');
+        steps.forEach((other) => { const m = mediaOf(other); if (m) m.classList.remove('show-desc'); });
+        if (open) media.classList.add('show-desc');
+      });
+    });
+    // tapping anywhere else puts them all away again
+    document.addEventListener('click', (e) => {
+      if (e.target.closest && e.target.closest('#howSteps .how-step')) return;
+      steps.forEach((other) => { const m = mediaOf(other); if (m) m.classList.remove('show-desc'); });
+    });
+  }
+
   // ---------- entrance: connecting line + sequential reveal ----------
   function setupEntrance() {
     if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
@@ -172,6 +197,7 @@
 
   function boot() {
     setupHoverVideo();
+    setupDescReveal();
     setupEntrance();
     setupBackgroundVideo();
   }
