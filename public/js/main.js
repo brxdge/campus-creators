@@ -609,6 +609,9 @@ const spotlight = (function () {
   const bandEl = document.querySelector('.band');
   const btnEl = bandEl && bandEl.querySelector('.btn');
   if (!bandEl || !btnEl || prefersReducedMotion) return;
+  // Tells the stylesheet this hover effect is live, so the paragraph (hidden
+  // until the button is hovered) is only ever hidden when it can be revealed.
+  bandEl.classList.add('has-reveal');
 
   // Position the reveal's origin exactly at the button, as a % of the
   // band's own box — the button isn't centred in the layout, so this has
