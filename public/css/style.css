@@ -699,6 +699,27 @@ header.nav-hidden{transform:translateY(-100%);}
 }
 .band.btn-hover .btn{background:var(--red);border-color:var(--red);color:#fff;}
 
+/* The paragraph stays out of sight until the button is hovered (or focused).
+   It appears just under the button, a beat after the white fill has finished
+   spreading. It can't sit between the heading and the button: it would push the
+   button out from under the pointer the moment it appeared. It's only hidden
+   where it can be revealed (a real mouse, a wide screen, motion allowed -
+   .has-reveal is set by main.js); phones, tablets and reduced-motion keep it
+   showing as before. The box keeps its 400px width so the photo cut-outs, which
+   are sized around it (band-people.js), end up exactly where they did. */
+@media (min-width:901px) and (hover:hover){
+  .band.has-reveal .band-side{position:relative;width:min(400px,100%);}
+  .band.has-reveal .band-side p{
+    position:absolute;top:100%;left:0;width:100%;margin:22px 0 0;
+    opacity:0;transform:translateY(10px);pointer-events:none;
+    transition:opacity .3s ease,transform .3s ease,color .5s ease;
+  }
+  .band.has-reveal.btn-hover .band-side p{
+    opacity:1;transform:none;
+    transition:opacity .5s ease .75s,transform .6s cubic-bezier(.22,1,.36,1) .75s,color .5s ease;
+  }
+}
+
 /* Expands once, permanently, when the section reaches the centre of the
    screen — this is a real height change, not a visual trick, so it
    correctly pushes Work (and everything after it) down and reserves that
