@@ -671,7 +671,11 @@ const clientTabsEl = document.getElementById('clientTabs');
 if (clientsSection && brandPanel && showcaseTrack && clientTabsEl) {
   const TONES = [1, 3, 4, 2, 5];
   const AUTO_MS = 4200;
-  const clientTabs = Array.from(document.querySelectorAll('.client-tab'));
+  // The tabs printed in index.html are only the starting set. Once the admin's
+  // brand list arrives (see syncTabs below) the strip is rebuilt from it, so
+  // brands added or removed in the admin show up here without touching the page.
+  let clientTabs = Array.from(document.querySelectorAll('.client-tab'));
+  let pickedByVisitor = false;
   const canHover = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
 
   let currentBrand = null;   // whatever the showcase is currently built from
@@ -916,9 +920,10 @@ if (clientsSection && brandPanel && showcaseTrack && clientTabsEl) {
     startAuto();
   }
 
-  clientTabs.forEach((tab, i) => {
+  function bindTab(tab) {
     tab.addEventListener('click', () => {
       clearTimeout(previewTimer);
+      pickedByVisitor = true;
       lockedBrand = tab.dataset.brand;
       selectBrand(lockedBrand);
     });
@@ -938,9 +943,52 @@ if (clientsSection && brandPanel && showcaseTrack && clientTabsEl) {
       if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
       e.preventDefault();
       const dir = e.key === 'ArrowRight' ? 1 : -1;
-      clientTabs[(i + dir + clientTabs.length) % clientTabs.length].focus();
+      const at = clientTabs.indexOf(tab);
+      clientTabs[(at + dir + clientTabs.length) % clientTabs.length].focus();
     });
-  });
+  }
+  clientTabs.forEach(bindTab);
+
+  // Rebuild the tab strip from the brands the admin actually has, in the
+  // admin's order. Existing tabs are reused (they keep their listeners);
+  // brands that are new get a fresh tab; brands that were deleted lose theirs.
+  // If the list can't be loaded, or comes back empty, the printed tabs stay.
+  function syncTabs() {
+    const names = Object.keys(MEDIA_DATA || {});
+    if (!names.length) return;
+    const unchanged = names.length === clientTabs.length &&
+      names.every((n, i) => clientTabs[i].dataset.brand === n);
+    if (!unchanged) {
+      const have = new Map(clientTabs.map((t) => [t.dataset.brand, t]));
+      const next = names.map((name) => {
+        let tab = have.get(name);
+        if (!tab) {
+          tab = document.createElement('button');
+          tab.type = 'button';
+          tab.className = 'client-tab';
+          tab.dataset.brand = name;
+          tab.appendChild(document.createTextNode(name));
+          const dot = document.createElement('span');
+          dot.className = 'client-tab-status';
+          dot.setAttribute('aria-hidden', 'true');
+          tab.appendChild(dot);
+          bindTab(tab);
+        }
+        return tab;
+      });
+      clientTabsEl.replaceChildren(...next);
+      clientTabs = next;
+    }
+    // keep the selection sensible: if nobody has picked a brand yet, start on
+    // the first one in the admin's order; if the shown brand was deleted, move on
+    if (!names.includes(currentBrand) || !pickedByVisitor) {
+      lockedBrand = names[0];
+      currentBrand = null;
+      selectBrand(lockedBrand);
+    } else {
+      clientTabs.forEach((t) => t.classList.toggle('active', t.dataset.brand === currentBrand));
+    }
+  }
 
   if (canHover) {
     clientTabsEl.addEventListener('mouseleave', () => {
@@ -982,6 +1030,7 @@ if (clientsSection && brandPanel && showcaseTrack && clientTabsEl) {
   // happened to switch brands and back. This rebuilds the pool once the
   // real data is in, whether or not the brand selection has changed.
   document.addEventListener('mediaDataReady', () => {
+    syncTabs();
     updateStatusDots();
     const media = mediaFor(currentBrand);
     pool = getPool(media);
