@@ -1253,3 +1253,82 @@ if (navLinks) {
   }, { rootMargin: '120px 0px' });
   secs.forEach((s) => io.observe(s));
 })();
+
+// ---- hero brand marquee ----
+// Dim brand names drifting along the bottom of the hero. The list is the same
+// one the Creators in Action tabs use (the brands in the admin), so a brand
+// added or removed there appears or disappears here too. The names printed in
+// index.html are what shows if that can't be loaded, and with reduced motion
+// switched on the names stand still in a row instead of scrolling.
+(function brandMarquee() {
+  const root = document.getElementById('brandMarquee');
+  const track = document.getElementById('bmTrack');
+  const view = root && root.querySelector('.bm-viewport');
+  if (!root || !track || !view) return;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SPEED = 52;                        // pixels per second
+  let names = Array.from(track.children).map((li) => li.textContent.trim()).filter(Boolean);
+  let drawnWidth = 0;
+  let resizeTimer = 0;
+
+  function item(name, clone) {
+    const li = document.createElement('li');
+    li.className = 'bm-item';
+    li.textContent = name;
+    if (clone) { li.setAttribute('aria-hidden', 'true'); li.dataset.clone = '1'; }
+    return li;
+  }
+
+  // One full set of names, then as many extra copies as it takes to always
+  // fill the screen; the track slides left by exactly one set and starts over,
+  // which is invisible because the copy that lands in its place is identical.
+  function draw() {
+    if (!names.length) return;
+    track.replaceChildren(...names.map((n) => item(n, false)));
+    drawnWidth = view.clientWidth;
+    if (reduce) return;
+    const setW = track.getBoundingClientRect().width;
+    if (!setW) return;
+    const copies = Math.ceil(drawnWidth / setW);
+    for (let c = 0; c < copies; c++) names.forEach((n) => track.appendChild(item(n, true)));
+    track.style.setProperty('--bm-set', setW + 'px');
+    track.style.setProperty('--bm-dur', (setW / SPEED).toFixed(1) + 's');
+    root.classList.add('is-live');
+  }
+
+  // measure once the display font is in, otherwise the loop length is off
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('1em Anton').then(draw, draw);
+  } else {
+    window.addEventListener('load', draw);
+  }
+
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (Math.abs(view.clientWidth - drawnWidth) > 24) draw();
+    }, 200);
+  });
+
+  document.addEventListener('mediaDataReady', () => {
+    const fresh = Object.keys(MEDIA_DATA || {});
+    if (!fresh.length) return;
+    if (fresh.length === names.length && fresh.every((n, i) => n === names[i])) return;
+    names = fresh;
+    draw();
+  });
+
+  // On desktop the hero stays pinned while the next section rises over it, and
+  // the headline fades out as that happens. Fade the strip along with it so its
+  // names don't hang around beside the rising card.
+  let fadeFrame = 0;
+  window.addEventListener('scroll', () => {
+    if (fadeFrame) return;
+    fadeFrame = requestAnimationFrame(() => {
+      fadeFrame = 0;
+      const pinned = document.documentElement.classList.contains('cc-choreo-desktop');
+      const p = pinned ? Math.min(1, window.scrollY / (window.innerHeight * 0.4)) : 0;
+      root.style.opacity = p > 0 ? String(1 - p) : '';
+    });
+  }, { passive: true });
+})();
