@@ -3326,3 +3326,86 @@ input,textarea{text-transform:none;}
   .footer-rg{padding-bottom:12px;}
   .footer-rg p{font-size:10.5px;}
 }
+
+/* ============================================================
+   HERO brand marquee: dim, single-colour brand names drifting past on a
+   slow glow that rises from the bottom edge of the hero. Names come from the
+   admin's brand list (main.js). Motion is transform/opacity only, and it
+   pauses by itself whenever the hero is off screen (.is-offscreen, above).
+   ============================================================ */
+.hero{--bm-h:clamp(86px,11.5vh,118px);}
+/* the headline sits at the bottom of the hero (see "HERO - headline smaller..."
+   above), so it's lifted by the height of the strip to make room for it */
+.brands-body .hero{padding-bottom:calc(var(--bm-h) + clamp(14px,3vh,28px)) !important;}
+.brand-marquee{
+  position:absolute;left:0;right:0;bottom:0;height:var(--bm-h);z-index:3;overflow:hidden;
+  pointer-events:none;
+}
+/* a dark base so the glow sits on a calm background instead of on the reels */
+.brand-marquee::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(11,11,13,0) 0,rgba(11,11,13,.74) 40%,rgba(11,11,13,.9) 100%);
+}
+/* stay hidden under the intro loader, then fade in once it has finished */
+body.loader-running .brand-marquee{opacity:0;}
+body:not(.loader-running) .brand-marquee{animation:bmIn 1.2s ease .35s backwards;}
+@keyframes bmIn{from{opacity:0;}to{opacity:1;}}
+
+.bm-glow{
+  position:absolute;inset:0;overflow:hidden;pointer-events:none;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 66%);
+          mask-image:linear-gradient(to bottom,transparent 0,#000 66%);
+}
+/* each blob is a tall soft ellipse centred on the bottom edge, so only its
+   upper half shows, like light coming up from below */
+.bm-glow i{position:absolute;bottom:-115%;height:230%;display:block;border-radius:50%;will-change:transform;}
+.bm-glow i:nth-child(1){
+  left:-8%;width:54%;
+  background:radial-gradient(closest-side,rgba(235,63,34,.78) 0,rgba(235,63,34,.3) 55%,rgba(235,63,34,0) 100%);
+  animation:bmDriftA 17s ease-in-out infinite alternate;
+}
+.bm-glow i:nth-child(2){
+  left:30%;width:42%;
+  background:radial-gradient(closest-side,rgba(255,228,216,.5) 0,rgba(255,104,128,.46) 32%,rgba(255,104,128,0) 100%);
+  animation:bmDriftB 23s ease-in-out infinite alternate;
+}
+.bm-glow i:nth-child(3){
+  right:-10%;width:48%;
+  background:radial-gradient(closest-side,rgba(112,76,216,.58) 0,rgba(112,76,216,.2) 55%,rgba(112,76,216,0) 100%);
+  animation:bmDriftC 29s ease-in-out infinite alternate;
+}
+@keyframes bmDriftA{from{transform:translate3d(-6%,0,0) scale(1);}to{transform:translate3d(16%,0,0) scale(1.12);}}
+@keyframes bmDriftB{from{transform:translate3d(10%,0,0) scale(1.08);}to{transform:translate3d(-14%,0,0) scale(.94);}}
+@keyframes bmDriftC{from{transform:translate3d(8%,0,0) scale(1);}to{transform:translate3d(-18%,0,0) scale(1.1);}}
+
+.bm-viewport{
+  position:absolute;left:0;right:0;top:4%;height:64%;display:flex;align-items:center;overflow:hidden;
+  pointer-events:auto;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);
+          mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);
+}
+.bm-track{display:flex;align-items:center;width:max-content;margin:0;padding:0;list-style:none;}
+.bm-item{
+  flex:none;padding:0 clamp(26px,4.6vw,76px);
+  font-family:var(--display);font-size:clamp(18px,1.7vw,27px);line-height:1;letter-spacing:.04em;
+  text-transform:uppercase;white-space:nowrap;color:rgba(255,255,255,.56);transition:color .3s ease;
+}
+.bm-item:hover{color:#fff;}
+.brand-marquee.is-live .bm-track{animation:bmRun var(--bm-dur,40s) linear infinite;will-change:transform;}
+.brand-marquee.is-live .bm-viewport:hover .bm-track{animation-play-state:paused;}
+@keyframes bmRun{from{transform:translate3d(0,0,0);}to{transform:translate3d(calc(var(--bm-set,50%) * -1),0,0);}}
+
+@media (max-width:760px){
+  .hero{--bm-h:78px;}
+  .brands-body #sections > .hero{padding-bottom:calc(var(--bm-h) + 16px) !important;}
+  .bm-item{padding:0 26px;font-size:17px;}
+}
+/* reduced motion: nothing scrolls or drifts; the names sit still in a row
+   (swipe sideways if they don't all fit) */
+@media (prefers-reduced-motion: reduce){
+  .bm-glow i,.brand-marquee,.brand-marquee .bm-track{animation:none !important;}
+  .bm-viewport{overflow-x:auto;scrollbar-width:none;-webkit-mask-image:none;mask-image:none;}
+  .bm-viewport::-webkit-scrollbar{display:none;}
+  .bm-track{margin:0 auto;}
+  .bm-item[data-clone]{display:none;}
+}
