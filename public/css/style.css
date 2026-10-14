@@ -2208,8 +2208,8 @@ video.phone-media::-webkit-media-controls,
 /* the index */
 .svc-list{list-style:none;margin:0;padding:0;border-top:1px solid rgba(255,255,255,.1);counter-reset:none;}
 .svc-item{
-  position:relative;width:100%;display:grid;grid-template-columns:34px 1fr;grid-template-areas:"num name" ". desc";
-  column-gap:14px;align-items:baseline;text-align:left;
+  position:relative;width:100%;display:grid;grid-template-columns:34px minmax(0,1fr);grid-template-rows:auto auto;grid-template-areas:"num name" ". desc";
+  column-gap:14px;align-items:baseline;align-content:start;text-align:left;height:auto;
   background:none;border:0;border-bottom:1px solid rgba(255,255,255,.1);
   padding:clamp(7px,1.25vh,13px) 34px clamp(7px,1.25vh,13px) 0;color:#fff;cursor:pointer;font:inherit;
 }
@@ -2228,9 +2228,12 @@ video.phone-media::-webkit-media-controls,
   font-size:22px;color:var(--red);transition:opacity .35s,transform .45s cubic-bezier(.22,1,.36,1);
 }
 .svc-item.active::after{opacity:1;transform:translate(0,-50%);}
-.svc-desc{grid-area:desc;display:grid;grid-template-rows:0fr;margin-top:0;transition:grid-template-rows .55s cubic-bezier(.22,1,.36,1),margin-top .55s cubic-bezier(.22,1,.36,1);}
-.svc-desc > span{overflow:hidden;min-height:0;font-size:15px;line-height:1.5;color:rgba(255,255,255,.66);padding-left:12px;}
-.svc-item.active .svc-desc{grid-template-rows:1fr;margin-top:8px;}
+/* The line under the open service opens and closes on a plain pixel height
+   (services-showcase.js measures the text into --svc-h). No nested grid and no
+   fr tracks, so the row can never be stretched taller than its own content. */
+.svc-desc{grid-area:desc;align-self:start;display:block;height:0;overflow:hidden;margin-top:0;transition:height .55s cubic-bezier(.22,1,.36,1),margin-top .55s cubic-bezier(.22,1,.36,1);}
+.svc-desc > span{display:block;font-size:15px;line-height:1.5;color:rgba(255,255,255,.66);padding-left:12px;}
+.svc-item.active .svc-desc{height:var(--svc-h,auto);margin-top:8px;}
 .svc-bar{position:absolute;left:0;right:0;bottom:-1px;height:2px;overflow:hidden;pointer-events:none;}
 .svc-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--red),#ff8a6e);transform:scaleX(0);transform-origin:left center;}
 .svc-running .svc-item.active .svc-bar i{animation:svcBar var(--svc-dur,5.5s) linear forwards;}
@@ -2317,7 +2320,7 @@ video.phone-media::-webkit-media-controls,
   .svc-sec .svc-footnote{display:none;}
   .svc-deck{display:none;}
   .svc-frame,.svc-deck-card{border-radius:16px;}
-  .svc-item{padding:7px 26px 7px 0;grid-template-columns:24px 1fr;column-gap:8px;}
+  .svc-item{padding:7px 26px 7px 0;grid-template-columns:24px minmax(0,1fr);column-gap:8px;}
   .svc-num{font-size:10px;}
   .svc-name{font-size:clamp(19px,6vw,24px);-webkit-text-stroke-width:1px;}
   .svc-item.active .svc-name{transform:translateX(6px);}
