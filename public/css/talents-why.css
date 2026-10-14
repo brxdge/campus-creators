@@ -1,0 +1,177 @@
+/* ============================================================
+   WHY JOIN (ambassadors page) — four panels. Number, icon and title are
+   always showing; hover (or focus, or a tap on touch screens) widens one
+   panel, floods it red from where the pointer came in, and fades in its
+   description. Everything is scoped to #tal-why so it wins over the older
+   .tw-* rules in style.css without touching them.
+   ============================================================ */
+#tal-why{
+  --tw-pad:clamp(72px,11vh,120px);
+  --tw-h2:clamp(46px,min(7.2vw,13vh),118px);
+  --tw-gap:clamp(18px,3.4vh,34px);
+  --tw-pgap:clamp(10px,1.1vw,18px);
+  --tw-px:clamp(16px,1.8vw,28px);
+  --tw-grow:2.3;
+  --tw-ease:cubic-bezier(.22,1,.36,1);
+  --tw-art-open:translate(0,-6%) scale(.82);
+}
+
+/* ---- heading row: title left, one short line right ---- */
+#tal-why .tw-layout{display:flex;flex-direction:column;align-items:stretch;gap:var(--tw-gap);grid-template-columns:none;}
+#tal-why .tw-head{display:flex;align-items:flex-end;justify-content:space-between;gap:clamp(20px,4vw,64px);text-align:left;}
+#tal-why .tw-head h2{font-size:var(--tw-h2);line-height:.9;margin:0;white-space:nowrap;}
+#tal-why .tw-head p{margin:0 0 .3em;max-width:30ch;font-size:clamp(14px,1.15vw,18px);line-height:1.5;color:rgba(255,255,255,.66);}
+
+/* ---- panels: shared look ---- */
+#tal-why .tw-list{list-style:none;margin:0;padding:0;border:0;}
+#tal-why .tw-row{
+  position:relative;display:block;min-width:0;padding:0;border:0;gap:0;grid-template-columns:none;
+  border-radius:clamp(18px,2vw,30px);overflow:hidden;cursor:default;outline:none;
+  background:linear-gradient(180deg,#242427 0%,#18181a 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);
+  --mx:50%;--my:100%;
+}
+/* the red that floods in (starts at the point the pointer entered) */
+#tal-why .tw-row::before{
+  content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(130% 100% at var(--mx) var(--my),#ff6b47 0%,#EB3F22 42%,#C92F17 100%);
+  clip-path:circle(0px at var(--mx) var(--my));
+  transition:clip-path .8s var(--tw-ease);
+}
+/* a faint ember in the corner while the panel is at rest (replaces the old red underline) */
+#tal-why .tw-row::after{
+  content:'';position:absolute;left:-35%;right:auto;bottom:-38%;width:95%;height:75%;border-radius:50%;z-index:0;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(235,63,34,.26),rgba(235,63,34,0));
+  transform:none;transform-origin:center;transition:opacity .5s ease;
+}
+#tal-why .tw-row:nth-child(even)::after{left:auto;right:-35%;}
+
+#tal-why .tw-num{
+  position:absolute;z-index:1;left:var(--tw-px);top:clamp(12px,2vh,24px);
+  font-family:var(--display);font-size:clamp(40px,min(4.6vw,8.4vh),88px);line-height:.9;
+  color:transparent;-webkit-text-stroke:1.3px rgba(255,255,255,.42);transition:-webkit-text-stroke-color .4s ease;
+}
+#tal-why .tw-plus{
+  position:absolute;z-index:1;right:clamp(14px,1.5vw,22px);top:clamp(14px,2.2vh,26px);width:34px;height:34px;border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);
+  transition:background .4s ease,box-shadow .4s ease,transform .7s var(--tw-ease);
+}
+#tal-why .tw-plus::before,#tal-why .tw-plus::after{
+  content:'';position:absolute;left:50%;top:50%;width:12px;height:1.8px;margin:-.9px 0 0 -6px;border-radius:2px;background:#fff;
+  transition:background .3s ease;
+}
+#tal-why .tw-plus::after{transform:rotate(90deg);}
+
+#tal-why .tw-art{
+  --tw-art:clamp(104px,min(11vw,20vh),210px);
+  position:absolute;z-index:1;top:50%;width:var(--tw-art);aspect-ratio:1;margin-top:calc(var(--tw-art) / -2);
+  right:calc(50% - var(--tw-art) / 2);               /* centred while the panel is closed ... */
+  color:rgba(255,255,255,.4);transform:translate(0,-4%);
+  transition:transform .85s var(--tw-ease),right .85s var(--tw-ease),color .4s ease;
+}
+#tal-why .tw-art svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;overflow:visible;}
+#tal-why .tw-spark{transform-box:fill-box;transform-origin:center;}
+
+#tal-why .tw-text{position:absolute;z-index:1;left:0;right:0;bottom:0;padding:0 var(--tw-px) clamp(16px,2.6vh,30px);}
+#tal-why .tw-text h3{
+  margin:0;font-family:var(--display);font-weight:400;font-size:clamp(26px,min(2.7vw,4.9vh),52px);line-height:.98;
+  text-transform:uppercase;color:#fff;white-space:nowrap;transform:none;
+}
+/* opens on a plain pixel height (talents-why.js measures the text into --tw-dh):
+   no nested grid or fr tracks, so a panel can't be stretched by its own description */
+#tal-why .tw-desc{display:block;height:0;overflow:hidden;opacity:0;margin-top:0;
+  transition:height .45s var(--tw-ease),opacity .2s ease,margin-top .45s var(--tw-ease);}
+#tal-why .tw-desc p{
+  display:block;margin:0;max-width:none;width:100%;
+  font-size:clamp(13px,min(1.06vw,2.5vh),17px);line-height:1.5;color:rgba(255,255,255,.94);text-transform:none;
+}
+@keyframes twTwinkle{0%,100%{transform:scale(1) rotate(0);}50%{transform:scale(1.4) rotate(45deg);}}
+
+/* ============ desktop: four panels side by side ============ */
+@media (min-width:901px){
+  #tal-why .tw-list{
+    display:flex;gap:var(--tw-pgap);container-type:inline-size;
+    height:clamp(250px,calc(100svh - 2 * var(--tw-pad) - var(--tw-h2) * .92 - var(--tw-gap)),620px);
+  }
+  #tal-why .tw-row{flex:1 1 0;transition:flex-grow .8s var(--tw-ease),box-shadow .4s ease;}
+  #tal-why .tw-row:nth-child(even){margin-top:clamp(12px,3vh,34px);}
+  /* the description is laid out at the size of an open panel so it doesn't re-wrap while the panel is still growing */
+  #tal-why .tw-desc p{width:calc((100cqw - 3 * var(--tw-pgap)) * var(--tw-grow) / (var(--tw-grow) + 3) - 2 * var(--tw-px));}
+  #tal-why .tw-row:focus-visible{outline:2px solid #fff;outline-offset:3px;}
+
+  /* open = focus, tap (.is-open) ... */
+
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-desc{height:var(--tw-dh,auto);opacity:1;margin-top:clamp(8px,1.4vh,14px);
+    transition:height .65s var(--tw-ease) .1s,opacity .45s ease .24s,margin-top .65s var(--tw-ease) .1s;}
+  #tal-why .tw-row:is(.is-open,:focus-visible)::before{clip-path:circle(150% at var(--mx) var(--my));}
+  #tal-why .tw-row:is(.is-open,:focus-visible){box-shadow:inset 0 0 0 1px rgba(255,255,255,0);}
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-num{-webkit-text-stroke-color:#fff;}
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-plus{background:#fff;box-shadow:none;transform:rotate(45deg);}
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-plus::before,#tal-why .tw-row:is(.is-open,:focus-visible) .tw-plus::after{background:var(--red);}
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-art{color:#fff;transform:var(--tw-art-open);right:var(--tw-px);}
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-spark{animation:twTwinkle 1.7s ease-in-out .35s infinite;}
+  #tal-why .tw-row:is(.is-open,:focus-visible)::after{opacity:0;}
+  
+  #tal-why .tw-row:is(.is-open,:focus-visible){flex-grow:var(--tw-grow);}
+}
+/* ... or hover, on devices that really hover */
+@media (min-width:901px) and (hover:hover){
+
+  #tal-why .tw-row:hover .tw-desc{height:var(--tw-dh,auto);opacity:1;margin-top:clamp(8px,1.4vh,14px);
+    transition:height .65s var(--tw-ease) .1s,opacity .45s ease .24s,margin-top .65s var(--tw-ease) .1s;}
+  #tal-why .tw-row:hover::before{clip-path:circle(150% at var(--mx) var(--my));}
+  #tal-why .tw-row:hover{box-shadow:inset 0 0 0 1px rgba(255,255,255,0);}
+  #tal-why .tw-row:hover .tw-num{-webkit-text-stroke-color:#fff;}
+  #tal-why .tw-row:hover .tw-plus{background:#fff;box-shadow:none;transform:rotate(45deg);}
+  #tal-why .tw-row:hover .tw-plus::before,#tal-why .tw-row:hover .tw-plus::after{background:var(--red);}
+  #tal-why .tw-row:hover .tw-art{color:#fff;transform:var(--tw-art-open);right:var(--tw-px);}
+  #tal-why .tw-row:hover .tw-spark{animation:twTwinkle 1.7s ease-in-out .35s infinite;}
+  #tal-why .tw-row:hover::after{opacity:0;}
+  
+  #tal-why .tw-row:hover{flex-grow:var(--tw-grow);}
+}
+
+/* ============ tablets and phones: the panels stack, tap to open ============ */
+@media (max-width:900px){
+  #tal-why{--tw-px:14px;--tw-art-open:none;}
+  #tal-why .tw-layout{gap:clamp(14px,2.4vh,24px);}
+  #tal-why .tw-head{flex-direction:column;align-items:center;text-align:center;gap:8px;}
+  #tal-why .tw-head h2{font-size:clamp(34px,11vw,56px);}
+  #tal-why .tw-head p{margin:0 auto;max-width:34ch;font-size:clamp(13px,3.4vw,16px);}
+  #tal-why .tw-list{display:grid;gap:10px;}
+  #tal-why .tw-row{
+    display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;align-content:center;column-gap:12px;row-gap:0;
+    min-height:clamp(74px,11.2svh,108px);padding:clamp(10px,1.6svh,16px) var(--tw-px);border-radius:18px;
+    transition:box-shadow .4s ease;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  }
+  #tal-why .tw-row:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+  #tal-why .tw-num,#tal-why .tw-art,#tal-why .tw-text{position:static;}
+  #tal-why .tw-plus{position:relative;top:0;right:0;}
+  #tal-why .tw-text h3,#tal-why .tw-desc{position:relative;z-index:1;}   /* stay above the red fill */
+  #tal-why .tw-num{grid-area:1/1;font-size:clamp(30px,8.4vw,44px);min-width:1.5em;}
+  #tal-why .tw-art{grid-area:1/2;width:clamp(40px,11.4vw,60px);margin:0;transform:none;--tw-art:0px;}
+  #tal-why .tw-art svg{stroke-width:3;}
+  #tal-why .tw-text{display:contents;padding:0;}
+  #tal-why .tw-text h3{grid-area:1/3;font-size:clamp(19px,5.6vw,28px);}
+  #tal-why .tw-plus{grid-area:1/4;margin:0;width:30px;height:30px;}
+  #tal-why .tw-desc{grid-area:2/1/3/-1;align-self:start;}
+  #tal-why .tw-desc p{font-size:clamp(13px,3.6vw,16px);}
+  #tal-why .tw-row::after{display:none;}
+
+
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-desc{height:var(--tw-dh,auto);opacity:1;margin-top:clamp(8px,1.4vh,14px);
+    transition:height .65s var(--tw-ease) .1s,opacity .45s ease .24s,margin-top .65s var(--tw-ease) .1s;}
+  #tal-why .tw-row:is(.is-open,:focus-visible)::before{clip-path:circle(150% at var(--mx) var(--my));}
+  #tal-why .tw-row:is(.is-open,:focus-visible){box-shadow:inset 0 0 0 1px rgba(255,255,255,0);}
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-num{-webkit-text-stroke-color:#fff;}
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-plus{background:#fff;box-shadow:none;transform:rotate(45deg);}
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-plus::before,#tal-why .tw-row:is(.is-open,:focus-visible) .tw-plus::after{background:var(--red);}
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-art{color:#fff;transform:var(--tw-art-open);right:var(--tw-px);}
+  #tal-why .tw-row:is(.is-open,:focus-visible) .tw-spark{animation:twTwinkle 1.7s ease-in-out .35s infinite;}
+  #tal-why .tw-row:is(.is-open,:focus-visible)::after{opacity:0;}
+  
+}
+
+@media (prefers-reduced-motion: reduce){
+  #tal-why .tw-row,#tal-why .tw-row *,#tal-why .tw-row::before,#tal-why .tw-row::after{transition:none !important;animation:none !important;}
+}
