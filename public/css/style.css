@@ -3331,61 +3331,132 @@ input,textarea{text-transform:none;}
 }
 
 /* ============================================================
-   HERO brand marquee: dim, single-colour brand names drifting past on a
-   slow glow that rises from the bottom edge of the hero. Names come from the
-   admin's brand list (main.js). Motion is transform/opacity only, and it
-   pauses by itself whenever the hero is off screen (.is-offscreen, above).
+   ABOUT US brand marquee: dim, single-colour brand names drifting along a
+   dark card at the bottom of the section. Behind them sits a fixed pink glow
+   (rising from the bottom edge, tallest toward the right) that a prism-like
+   light sweep crosses every ~4 seconds: warm white-orange-red first, a blue
+   edge trailing out to the left. Names come from the admin's brand list
+   (main.js). Motion is transform/opacity only, and it pauses by itself while
+   About us is off screen (.is-offscreen, above).
    ============================================================ */
-.hero{--bm-h:clamp(86px,11.5vh,118px);}
-/* the headline sits at the bottom of the hero (see "HERO - headline smaller..."
-   above), so it's lifted by the height of the strip to make room for it */
-.brands-body .hero{padding-bottom:calc(var(--bm-h) + clamp(14px,3vh,28px)) !important;}
+#about{
+  position:relative;
+  --bm-h:clamp(100px,17vh,168px);
+  --bm-gap:clamp(16px,3.4vh,36px);
+  --bm-side:clamp(28px,3.4vw,64px);
+}
+/* make room under the content for the card (the section is centred, so this
+   lifts the content by half of it) */
+.brands-body #about{padding-bottom:calc(var(--bm-h) + var(--bm-gap) * 2);}
 .brand-marquee{
-  position:absolute;left:0;right:0;bottom:0;height:var(--bm-h);z-index:3;overflow:hidden;
-  pointer-events:none;
+  position:absolute;left:0;right:0;bottom:var(--bm-gap);z-index:3;
+  width:min(calc(100% - var(--bm-side) * 2),calc(1680px - var(--bm-side) * 2));margin:0 auto;height:var(--bm-h);
+  overflow:hidden;isolation:isolate;border-radius:clamp(18px,2vw,30px);background:#06020f;
+  box-shadow:0 22px 50px -26px rgba(6,2,15,.65);
 }
-/* a dark base so the glow sits on a calm background instead of on the reels */
-.brand-marquee::before{
-  content:'';position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(to bottom,rgba(11,11,13,0) 0,rgba(11,11,13,.74) 40%,rgba(11,11,13,.9) 100%);
-}
-/* stay hidden under the intro loader, then fade in once it has finished */
-body.loader-running .brand-marquee{opacity:0;}
-body:not(.loader-running) .brand-marquee{animation:bmIn 1.2s ease .35s backwards;}
-@keyframes bmIn{from{opacity:0;}to{opacity:1;}}
 
-.bm-glow{
-  position:absolute;inset:0;overflow:hidden;pointer-events:none;
-  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 66%);
-          mask-image:linear-gradient(to bottom,transparent 0,#000 66%);
+/* ---- the glow: the still picture ----
+   Four soft shapes, each sized in % of the card so it keeps its proportions on
+   any screen: the horizon glow along the bottom edge (brightest from the middle
+   to the right), a taller plume at about 70% across, a gentler rise on the left,
+   and a dark violet blob that cuts the top-right corner. */
+.bm-glow{position:absolute;inset:0;overflow:hidden;pointer-events:none;
+  background:
+    radial-gradient(52% 15% at 76% 100%,rgba(240,218,232,.9) 0%,rgba(226,190,212,.5) 50%,rgba(210,160,190,0) 100%),
+    radial-gradient(25% 122% at 67% 100%,rgba(176,92,124,.95) 0%,rgba(134,62,94,.66) 38%,rgba(84,36,64,.28) 68%,rgba(60,26,48,0) 100%),
+    radial-gradient(56% 46% at 74% 113%,#ecc9da 0%,#c997b1 24%,#a8667f 50%,rgba(128,68,100,.64) 74%,rgba(70,30,56,0) 100%),
+    radial-gradient(30% 22% at 99% 110%,rgba(176,152,176,.62) 0%,rgba(140,112,146,.28) 62%,rgba(120,100,130,0) 100%),
+    radial-gradient(26% 52% at 41% 112%,rgba(112,62,98,.74) 0%,rgba(66,40,76,.34) 58%,rgba(60,32,64,0) 100%),
+    radial-gradient(54% 100% at 38% 100%,rgba(28,30,54,.8) 0%,rgba(18,20,38,.35) 60%,rgba(12,12,28,0) 100%),
+    radial-gradient(30% 56% at 97% 56%,rgba(12,4,34,.97) 0%,rgba(12,4,34,.66) 58%,rgba(12,4,34,0) 100%),
+    linear-gradient(to bottom,#04000d,#08060f);
 }
-/* each blob is a tall soft ellipse centred on the bottom edge, so only its
-   upper half shows, like light coming up from below */
-.bm-glow i{position:absolute;bottom:-115%;height:230%;display:block;border-radius:50%;will-change:transform;}
+/* ---- the glow: the light sweep (one 4.05 s loop, quiet for the second half) ----
+   Everything starts at the bottom-left corner, like light leaking in from
+   off screen: a small cyan flash climbs the left edge, a white-peach bloom
+   (red at its outer edge) swells in the corner, flips to blue for a moment,
+   then leaves a red afterglow that drains away. */
+.bm-glow i{position:absolute;display:block;border-radius:50%;opacity:0;mix-blend-mode:screen;will-change:transform,opacity;top:0;height:200%;}
+/* white-peach bloom, orange then red toward the edge */
 .bm-glow i:nth-child(1){
-  left:-8%;width:54%;
-  background:radial-gradient(closest-side,rgba(235,63,34,.78) 0,rgba(235,63,34,.3) 55%,rgba(235,63,34,0) 100%);
-  animation:bmDriftA 17s ease-in-out infinite alternate;
+  left:-30%;width:60%;
+  background:radial-gradient(closest-side,rgba(255,246,236,.4) 0,rgba(255,184,132,.3) 24%,rgba(240,76,70,.26) 50%,rgba(214,44,84,.2) 74%,rgba(200,44,92,0) 100%);
+  animation:bmLeakWarm 4.05s linear infinite;
 }
+/* cyan flash first, then the blue phase */
 .bm-glow i:nth-child(2){
-  left:30%;width:42%;
-  background:radial-gradient(closest-side,rgba(255,228,216,.5) 0,rgba(255,104,128,.46) 32%,rgba(255,104,128,0) 100%);
-  animation:bmDriftB 23s ease-in-out infinite alternate;
+  left:-26%;width:52%;
+  background:radial-gradient(closest-side,rgba(10,140,255,.34) 0,rgba(16,150,255,.22) 36%,rgba(60,90,255,.1) 70%,rgba(60,90,255,0) 100%);
+  animation:bmLeakCool 4.05s linear infinite;
 }
+/* a faint violet breath at the right edge while it happens */
 .bm-glow i:nth-child(3){
-  right:-10%;width:48%;
-  background:radial-gradient(closest-side,rgba(112,76,216,.58) 0,rgba(112,76,216,.2) 55%,rgba(112,76,216,0) 100%);
-  animation:bmDriftC 29s ease-in-out infinite alternate;
+  left:auto;right:-14%;width:36%;top:12%;height:170%;
+  background:radial-gradient(closest-side,rgba(150,110,255,.32) 0,rgba(120,84,230,.14) 58%,rgba(120,84,230,0) 100%);
+  animation:bmLeakViolet 4.05s ease-in-out infinite;
 }
-@keyframes bmDriftA{from{transform:translate3d(-6%,0,0) scale(1);}to{transform:translate3d(16%,0,0) scale(1.12);}}
-@keyframes bmDriftB{from{transform:translate3d(10%,0,0) scale(1.08);}to{transform:translate3d(-14%,0,0) scale(.94);}}
-@keyframes bmDriftC{from{transform:translate3d(8%,0,0) scale(1);}to{transform:translate3d(-18%,0,0) scale(1.1);}}
+/* the red afterglow */
+.bm-glow i:nth-child(4){
+  left:-30%;width:60%;
+  background:radial-gradient(closest-side,rgba(255,40,60,.09) 0,rgba(255,40,60,.045) 50%,rgba(255,40,60,0) 100%);
+  animation:bmLeakTail 4.05s linear infinite;
+}
+/* the bottom edge lifts at the same time */
+.bm-glow::after{
+  content:'';position:absolute;left:30%;right:0;bottom:0;height:70%;opacity:0;mix-blend-mode:screen;
+  background:radial-gradient(60% 100% at 55% 100%,rgba(255,200,176,.28),rgba(255,200,176,0) 72%);
+  animation:bmLeakLift 4.05s linear infinite;
+}
+@keyframes bmLeakWarm{
+  0%,8%{opacity:0;transform:translate3d(12%,0,0) scale(.8);}
+  12.3%{opacity:.8;transform:translate3d(5%,0,0) scale(.95);}
+  17%{opacity:1;transform:translate3d(2%,0,0) scale(1);}
+  24.7%{opacity:.9;transform:translate3d(0,0,0) scale(1.04);}
+  29.6%{opacity:.6;transform:translate3d(-1%,0,0) scale(1.06);}
+  31%{opacity:.35;}
+  32.5%,100%{opacity:0;transform:translate3d(-1%,0,0) scale(1.06);}
+}
+@keyframes bmLeakCool{
+  0%,1.5%{opacity:0;transform:translate3d(32%,-6%,0) scale(.5);}
+  2.5%{opacity:.3;transform:translate3d(32%,-6%,0) scale(.5);}
+  6%{opacity:.32;transform:translate3d(20%,-14%,0) scale(.5);}
+  9.9%{opacity:.3;transform:translate3d(3%,-22%,0) scale(.5);}
+  12.5%{opacity:0;transform:translate3d(2%,-24%,0) scale(.5);}
+  30%{opacity:0;transform:translate3d(0,0,0) scale(.9);}
+  32.5%{opacity:.9;transform:translate3d(0,0,0) scale(.95);}
+  35%,41%{opacity:1;transform:translate3d(0,0,0) scale(1);}
+  45%{opacity:.3;transform:translate3d(0,0,0) scale(1.02);}
+  47%,100%{opacity:0;transform:translate3d(0,0,0) scale(1.02);}
+}
+@keyframes bmLeakViolet{
+  0%,12%{opacity:0;}
+  20%{opacity:.5;}
+  31%{opacity:.35;}
+  42%,100%{opacity:0;}
+}
+@keyframes bmLeakTail{
+  0%,44%{opacity:0;}
+  47%{opacity:.9;}
+  55%{opacity:.5;}
+  72%,100%{opacity:0;}
+}
+@keyframes bmLeakLift{
+  0%{opacity:0;}
+  1.5%{opacity:.9;}
+  4%{opacity:1;}
+  12%{opacity:.9;}
+  20%{opacity:.75;}
+  30%{opacity:.6;}
+  33%{opacity:.4;}
+  41%,100%{opacity:0;}
+}
 
+/* ---- the names ---- */
 .bm-viewport{
-  position:absolute;left:0;right:0;top:4%;height:64%;display:flex;align-items:center;overflow:hidden;
+  position:absolute;left:0;right:0;top:12%;height:54%;display:flex;align-items:center;overflow:hidden;
   pointer-events:auto;
-  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);
-          mask-image:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 9%,#000 91%,transparent 100%);
+          mask-image:linear-gradient(90deg,transparent 0,#000 9%,#000 91%,transparent 100%);
 }
 .bm-track{display:flex;align-items:center;width:max-content;margin:0;padding:0;list-style:none;}
 .bm-item{
@@ -3398,15 +3469,29 @@ body:not(.loader-running) .brand-marquee{animation:bmIn 1.2s ease .35s backwards
 .brand-marquee.is-live .bm-viewport:hover .bm-track{animation-play-state:paused;}
 @keyframes bmRun{from{transform:translate3d(0,0,0);}to{transform:translate3d(calc(var(--bm-set,50%) * -1),0,0);}}
 
+/* short windows (small laptops): the About copy and the card have to share one
+   screen, so the copy gets a little tighter */
+@media (min-width:901px) and (max-height:760px){
+  .brands-body #about{padding-top:72px;}
+}
+@media (min-width:901px) and (max-height:640px){
+  .about-pull .about-eyebrow{font-size:clamp(64px,min(13vw,22vh),180px);margin-bottom:12px;}
+  .brands-body .about h2{font-size:clamp(40px,min(5.4vw,8.4vh),120px);}
+}
+@media (min-width:901px) and (max-height:560px){
+  .about-pull .about-eyebrow{font-size:clamp(56px,min(13vw,20vh),180px);}
+}
+/* phones: the sticky "Book a call" bar owns the bottom 78px, so the card sits above it */
 @media (max-width:760px){
-  .hero{--bm-h:78px;}
-  .brands-body #sections > .hero{padding-bottom:calc(var(--bm-h) + 16px) !important;}
+  #about{--bm-h:76px;--bm-gap:12px;--bm-side:16px;}
+  .brands-body #about{padding-bottom:calc(78px + var(--bm-h) + var(--bm-gap) * 2) !important;}
+  .brand-marquee{bottom:calc(78px + var(--bm-gap));border-radius:16px;}
   .bm-item{padding:0 26px;font-size:17px;}
 }
-/* reduced motion: nothing scrolls or drifts; the names sit still in a row
-   (swipe sideways if they don't all fit) */
+/* reduced motion: nothing scrolls or sweeps; the glow stays still and the
+   names sit in a row (swipe sideways if they don't all fit) */
 @media (prefers-reduced-motion: reduce){
-  .bm-glow i,.brand-marquee,.brand-marquee .bm-track{animation:none !important;}
+  .bm-glow i,.bm-glow::after,.brand-marquee .bm-track{animation:none !important;}
   .bm-viewport{overflow-x:auto;scrollbar-width:none;-webkit-mask-image:none;mask-image:none;}
   .bm-viewport::-webkit-scrollbar{display:none;}
   .bm-track{margin:0 auto;}
