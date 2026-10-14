@@ -266,6 +266,35 @@
     syncPlayback();
   }
 
+  // ---------- description heights ----------
+  // The line under the open service opens and closes on a plain pixel height
+  // (CSS reads --svc-h). Measured here rather than with nested grid tracks so
+  // the row can never end up taller than its own text, in any browser. Re-measured
+  // whenever the text reflows (window resize, fonts arriving, text edits).
+  const descSpans = items.map((b) => {
+    const d = b.querySelector('.svc-desc');
+    return d ? d.firstElementChild : null;
+  });
+  function measureDescs() {
+    descSpans.forEach((s) => {
+      if (!s) return;
+      let h = s.getBoundingClientRect().height;
+      const oh = s.offsetHeight;
+      if (Math.abs(h - oh) > 1.5) h = oh; // an ancestor is scaled/rotated mid-animation: trust layout size
+      const d = s.parentElement;
+      if (h > 0) d.style.setProperty('--svc-h', (Math.round(h * 100) / 100) + 'px');
+      else d.style.removeProperty('--svc-h');
+    });
+  }
+  measureDescs();
+  if ('ResizeObserver' in window) {
+    const ro = new ResizeObserver(measureDescs);
+    descSpans.forEach((s) => { if (s) ro.observe(s); });
+  }
+  window.addEventListener('resize', measureDescs);
+  window.addEventListener('load', measureDescs);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureDescs);
+
   // ---------- input ----------
   items.forEach((b, k) => {
     b.addEventListener('click', () => {
