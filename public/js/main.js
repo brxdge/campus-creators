@@ -1254,12 +1254,13 @@ if (navLinks) {
   secs.forEach((s) => io.observe(s));
 })();
 
-// ---- hero brand marquee ----
-// Dim brand names drifting along the bottom of the hero. The list is the same
-// one the Creators in Action tabs use (the brands in the admin), so a brand
-// added or removed there appears or disappears here too. The names printed in
-// index.html are what shows if that can't be loaded, and with reduced motion
-// switched on the names stand still in a row instead of scrolling.
+// ---- brand marquee (bottom of About us) ----
+// Dim brand names drifting along the bottom of the About us section. The list
+// is the same one the Creators in Action tabs use (the brands in the admin), so
+// a brand added or removed there appears or disappears here too. The names
+// printed in index.html are what shows if that can't be loaded, and with
+// reduced motion switched on the names stand still in a row instead of
+// scrolling.
 (function brandMarquee() {
   const root = document.getElementById('brandMarquee');
   const track = document.getElementById('bmTrack');
@@ -1317,18 +1318,4 @@ if (navLinks) {
     names = fresh;
     draw();
   });
-
-  // On desktop the hero stays pinned while the next section rises over it, and
-  // the headline fades out as that happens. Fade the strip along with it so its
-  // names don't hang around beside the rising card.
-  let fadeFrame = 0;
-  window.addEventListener('scroll', () => {
-    if (fadeFrame) return;
-    fadeFrame = requestAnimationFrame(() => {
-      fadeFrame = 0;
-      const pinned = document.documentElement.classList.contains('cc-choreo-desktop');
-      const p = pinned ? Math.min(1, window.scrollY / (window.innerHeight * 0.4)) : 0;
-      root.style.opacity = p > 0 ? String(1 - p) : '';
-    });
-  }, { passive: true });
 })();
