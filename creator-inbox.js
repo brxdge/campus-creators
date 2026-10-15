@@ -31,8 +31,12 @@
 //
 // Emails: an address is taken from what Creator Search sends (email, contact
 // email ...), else from the creator's bio text, else one the team types in.
-// The website never sends email by itself: the admin opens a ready-made draft
-// in the team's own mail, and only records that a creator was emailed.
+// The admin shows a ready-made, editable message and its Send button emails the
+// creator from the website (through Resend, see mailer.js and the OUTREACH_*
+// variables). Only a person pressing Send ever sends anything: the website
+// never emails a creator by itself. Each send is recorded on the creator, and
+// there is a cap per 24 hours. Without RESEND_API_KEY the Send button is off.
+//   POST   /api/admin/discovered/:id/send   (admin only) email one creator { subject, message }
 //
 // Setup: set CREATOR_SEARCH_SECRET in Railway Variables (32+ random
 // characters) and put the same value in Creator Search. Until it is set the
@@ -305,6 +309,13 @@ module.exports = function creatorInbox(opts = {}) {
   fs.mkdirSync(dataDir, { recursive: true });
   // tests can swap these; in production only https links to TikTok's image servers are fetched
   const photoAllowed = typeof opts.photoAllowed === 'function' ? opts.photoAllowed : (u) => u.protocol === 'https:' && AVATAR_HOSTS.test(u.hostname);
+  // sending email to creators: opts.mail is the object mailer.js makes; without it the Send button is off
+  const mail = opts.mail && typeof opts.mail.sendOutreach === 'function' ? opts.mail : null;
+  const canSend = !!(mail && mail.outreach && mail.outreach.enabled);
+  const PER_DAY = Math.max(1, Number(opts.perDay || process.env.OUTREACH_PER_DAY) || 40);
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const sendingNow = new Set();                          // creator ids being emailed right now (stops a double click sending twice)
+  const sentRecently = (settings) => (Array.isArray(settings.sendLog) ? settings.sendLog : []).filter((t) => Date.now() - Date.parse(t) < DAY_MS);
 
   // { nextId, items: [...], deliveries: [last 20] }. nextId only goes up.
   function read() {
@@ -556,6 +567,14 @@ module.exports = function creatorInbox(opts = {}) {
       deliveries: s.deliveries,
       emailTemplate: currentTemplate(s.settings),
       receiver: { path: RECEIVE_PATH, ready: secret.length >= MIN_SECRET, shortSecret: !!secret && secret.length < MIN_SECRET },
+      mail: {
+        canSend,
+        from: canSend ? mail.outreach.from : '',
+        replyTo: canSend ? mail.outreach.replyTo : '',
+        hasAddress: !!(canSend && mail.outreach.hasAddress),
+        perDay: PER_DAY,
+        sentToday: sentRecently(s.settings).length,
+      },
     });
   });
 
@@ -610,6 +629,44 @@ module.exports = function creatorInbox(opts = {}) {
     }
     write(s);
     res.json({ ok: true, item: view(it) });
+  });
+
+  // email one creator from the website. Recorded as emailed only after the email service accepted it.
+  admin.post('/api/admin/discovered/:id/send', requireAdmin, json, async (req, res) => {
+    const id = Number(req.params.id);
+    if (!canSend) return res.status(503).json({ error: 'Sending isn’t set up yet. Add RESEND_API_KEY in Railway → Variables.' });
+    const first = read();
+    const found = first.items.find((i) => i.id === id);
+    if (!found) return res.status(404).json({ error: 'Not found.' });
+    const to = view(found).email;
+    if (!to) return res.status(400).json({ error: 'This creator has no email address yet.' });
+    const subject = templateText(req.body && req.body.subject, 200).replace(/\n+/g, ' ');
+    const text = templateText(req.body && req.body.message, 5000);
+    if (!subject) return res.status(400).json({ error: 'The subject is empty.' });
+    if (!text) return res.status(400).json({ error: 'The message is empty.' });
+    if (/\{[a-z ]{1,20}\}/i.test(subject + ' ' + text)) return res.status(400).json({ error: 'There’s still a {placeholder} in the message. Replace it before you send.' });
+    if (sentRecently(first.settings).length >= PER_DAY) return res.status(429).json({ error: 'That’s the limit of ' + PER_DAY + ' emails to creators in 24 hours. Try again later.' });
+    if (sendingNow.has(id)) return res.status(409).json({ error: 'That email is already being sent.' });
+    sendingNow.add(id);
+    try {
+      await mail.sendOutreach({ to, subject, text });
+    } catch (err) {
+      console.error('[creators] email to creator ' + id + ' failed:', err && err.message ? err.message : err);
+      const why = err && err.name === 'AbortError'
+        ? 'The email service didn’t answer in time. It may still have gone out, so check Resend → Emails before trying again.'
+        : err && err.status ? 'The email service refused it' + (err.detail ? ': ' + err.detail : ' (error ' + err.status + ').') + ' Nothing was marked as emailed.'
+        : 'Couldn’t reach the email service. Nothing was sent. Try again in a moment.';
+      return res.status(502).json({ error: why });
+    } finally { sendingNow.delete(id); }
+    const s = read();                                    // read again: the file may have changed while we waited
+    const now = new Date().toISOString();
+    const it = s.items.find((i) => i.id === id);
+    if (it) { it.contactedAt = now; it.contactedCount = (it.contactedCount || 0) + 1; it.seen = true; }
+    const log = sentRecently(s.settings);
+    log.push(now);
+    s.settings.sendLog = log;
+    write(s);
+    res.json({ ok: true, contactedAt: now, unseen: s.items.filter((i) => !i.seen).length, sentToday: log.length, perDay: PER_DAY });
   });
 
   // note that creators were emailed (or take it back). Emailing someone also counts as having seen them.
