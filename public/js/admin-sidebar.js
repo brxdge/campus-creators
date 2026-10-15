@@ -99,3 +99,45 @@
   window.addEventListener('hashchange', function () { window.setTimeout(function () { markActive(); revealActive(); }, 0); });
   sections.forEach(countFor);
 })();
+
+// The whole sidebar can be tucked away too, to give the page the full width.
+// A button next to the logo hides it; the menu button at the top of the page
+// brings it back. The choice is remembered in this browser. On a phone the
+// sidebar already slides in and out from the menu button, so none of this
+// applies there.
+(function () {
+  'use strict';
+  var app = document.getElementById('app');
+  var hideBtn = document.getElementById('sideHide');
+  var menuBtn = document.getElementById('sideToggle');
+  if (!app || !hideBtn || !menuBtn) return;
+  var KEY = 'ccAdminSideHidden';
+  var wide = window.matchMedia ? window.matchMedia('(min-width: 861px)') : { matches: true };
+
+  function remembered() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
+  function remember(v) { try { localStorage.setItem(KEY, v ? '1' : '0'); } catch (e) { /* private window: not remembered */ } }
+
+  function paint(hidden) {
+    app.classList.toggle('side-collapsed', hidden);
+    menuBtn.setAttribute('aria-label', hidden ? 'Show menu' : 'Menu');
+    menuBtn.title = hidden ? 'Show menu' : '';
+  }
+  paint(remembered());
+
+  hideBtn.addEventListener('click', function () {
+    paint(true);
+    remember(true);
+    menuBtn.focus();                      // the sidebar is gone; keep the keyboard somewhere visible
+  });
+
+  // admin.js uses the same button to slide the menu in on a phone. On a wide screen,
+  // while the sidebar is hidden, it brings the sidebar back instead.
+  document.addEventListener('click', function (e) {
+    if (!wide.matches || !app.classList.contains('side-collapsed')) return;
+    if (!e.target.closest || !e.target.closest('#sideToggle')) return;
+    e.stopPropagation();
+    paint(false);
+    remember(false);
+    hideBtn.focus();
+  }, true);
+})();
