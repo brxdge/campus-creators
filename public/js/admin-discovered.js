@@ -5,9 +5,9 @@
 //   - a row per creator: photo, name, @handle, followers, email, status
 //   - click a creator for the full picture in a side panel: bio, stats, links,
 //     email (found in the bio, sent by Creator Search, or typed in), outreach
-//   - "Email" opens a ready-made, editable draft in your own mail (Gmail or
-//     the Mail app); the website never sends anything by itself, it only
-//     remembers who has been emailed
+//   - "Email" opens a ready-made, editable message; "Send" emails the creator
+//     from the website and remembers who has been emailed. Nothing is ever
+//     sent unless someone presses Send.
 // Private: only shown here, never on the public site.
 // Loaded after admin.js, which calls render() and badge() through
 // window.CCDiscovered.
@@ -16,7 +16,6 @@
   'use strict';
   const PAGE = 30;
   const VIEW_KEY = 'cc-dc-view';
-  const MAILER_KEY = 'cc-dc-mailer';
   let data = null;                 // last response from /api/admin/discovered
   let filter = 'all';              // all | new | email | emailed
   let collection = '';             // '' = every collection
@@ -54,6 +53,7 @@
     copy: svg('<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/>', 15),
     spark: svg('<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.7 5.5-4.7s4.9 1.7 5.5 4.7"/><path d="M17 8.5v5M14.5 11h5"/>', 26, 1.8),
     info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>', 16),
+    send: svg('<path d="M21 3 10.5 13.5"/><path d="M21 3l-6.5 18-4-7.5L3 9.5 21 3Z"/>', 15),
   };
   const isNum = (n) => typeof n === 'number' && Number.isFinite(n);
   function short(n) {
@@ -568,21 +568,12 @@
   }
 
   // ---------- the email window ----------
-  function mailLinks(to, subject, body) {
-    const enc = encodeURIComponent;
-    const crlf = body.replace(/\r?\n/g, '\r\n');
-    return {
-      gmail: 'https://mail.google.com/mail/?view=cm&fs=1&to=' + enc(to) + '&su=' + enc(subject) + '&body=' + enc(body),
-      mail: 'mailto:' + to + '?subject=' + enc(subject) + '&body=' + enc(crlf),
-    };
-  }
-  function preferredMailer() { try { return localStorage.getItem(MAILER_KEY) === 'mail' ? 'mail' : 'gmail'; } catch (e) { return 'gmail'; } }
-
+  const PLACEHOLDER = /\{[a-z ]{1,20}\}/i;
   function openComposer(list, start) {
     const queue = list.filter((c) => c.email);
     if (!queue.length) { H.toast('None of these creators has an email address yet.', true); return; }
     closeComposer(true);
-    composer = { queue, i: Math.min(start || 0, queue.length - 1), opened: false, back: document.activeElement };
+    composer = { queue, i: Math.min(start || 0, queue.length - 1), sending: false, back: document.activeElement };
     const modal = node('div', 'dc-modal');
     const dlg = node('div', 'dc-dialog');
     dlg.setAttribute('role', 'dialog');
@@ -611,7 +602,8 @@
     const cm = composer;
     const c = cm.queue[cm.i];
     const tpl = data.emailTemplate || { subject: '', body: '' };
-    cm.opened = false;
+    const mail = data.mail || {};
+    cm.sending = false;
     const d = cm.dlg;
     d.innerHTML = '';
 
@@ -659,13 +651,27 @@
     fb.append(bl, body);
     d.appendChild(fb);
 
+    // where it comes from, and cautions worth seeing before pressing Send
+    const line = (text, quiet) => {
+      const p = node('p', 'dc-hint', text);
+      if (quiet) p.style.color = 'rgba(255,255,255,.6)';
+      d.appendChild(p);
+      return p;
+    };
+    if (!mail.canSend) line('Sending isn’t set up yet. Add RESEND_API_KEY in Railway → Variables, then reload this page.');
+    else {
+      line('Sent from ' + mail.from + '. Replies go to ' + mail.replyTo + '.' + (mail.perDay ? ' ' + (mail.sentToday || 0) + ' of ' + mail.perDay + ' emails used in the last 24 hours.' : ''), true);
+      if (!mail.hasAddress) line('Tip: add your business mailing address as MAIL_ADDRESS in Railway → Variables. It is added to the bottom of each email, and Canadian anti-spam rules expect it.');
+    }
+    if (c.contactedAt) line('You already emailed them on ' + whenLong(c.contactedAt) + '. Sending again emails them a second time.');
+
     const hint = node('p', 'dc-hint');
     d.appendChild(hint);
     const checkHint = () => {
       const msgs = [];
-      if (/\{[a-z ]{1,20}\}/i.test(subject.value + body.value)) msgs.push('There’s still a {placeholder} in the message. Replace it before you send.');
-      if (body.value.length > 1700) msgs.push('This is long. If your mail app cuts it off, use “Copy message” and paste it in.');
+      if (PLACEHOLDER.test(subject.value + ' ' + body.value)) msgs.push('There’s still a {placeholder} in the message. Replace it before you send.');
       if (!subject.value.trim()) msgs.push('The subject is empty.');
+      if (!body.value.trim()) msgs.push('The message is empty.');
       hint.textContent = msgs.join(' ');
       hint.hidden = !msgs.length;
     };
@@ -673,59 +679,48 @@
     body.addEventListener('input', checkHint);
     checkHint();
 
-    const links = () => mailLinks(c.email, subject.value, body.value);
-    const afterOpen = () => {
-      cm.opened = true;
-      paintOpened();
+    const next = (afterSend) => {
+      if (cm.i < cm.queue.length - 1) { cm.i += 1; paintComposer(); } else { closeComposer(); if (afterSend && cm.queue.length > 1) H.toast('That was the last one.'); }
     };
-    const mk = (which, label, primary) => {
-      const a = node('a', 'btn ' + (primary ? '' : 'ghost ') + 'small dc-open-mail');
-      a.textContent = label;
-      if (which === 'gmail') { a.target = '_blank'; a.rel = 'noopener noreferrer'; }   // the Mail app link opens the app itself, no tab
-      const refresh = () => { a.href = links()[which]; };
-      refresh();
-      subject.addEventListener('input', refresh);
-      body.addEventListener('input', refresh);
-      a.addEventListener('click', () => {
-        refresh();
-        try { localStorage.setItem(MAILER_KEY, which); } catch (e) { /* not remembered: fine */ }
-        setTimeout(afterOpen, 50);
-      });
-      return a;
-    };
-    const pref = preferredMailer();
+
+    // Send: the website emails the creator. It is only recorded as emailed once the email service accepted it.
     const actions = node('div', 'dc-btnrow dc-dlg-actions');
-    const gm = mk('gmail', 'Open in Gmail', pref === 'gmail');
-    const ml = mk('mail', 'Open in Mail app', pref === 'mail');
-    actions.append(pref === 'gmail' ? gm : ml, pref === 'gmail' ? ml : gm);
+    const sendText = c.contactedAt ? 'Send again' : 'Send';
+    const send = btn('btn small dc-send', ICON.send + '<span>' + sendText + '</span>');
+    send.disabled = !mail.canSend;
+    const setBusy = (on) => {
+      cm.sending = on;
+      send.disabled = on || !mail.canSend;
+      send.querySelector('span').textContent = on ? 'Sending…' : sendText;
+      subject.readOnly = on;
+      body.readOnly = on;
+    };
+    send.addEventListener('click', async () => {
+      if (cm.sending) return;
+      checkHint();
+      if (!subject.value.trim() || !body.value.trim() || PLACEHOLDER.test(subject.value + ' ' + body.value)) return;   // the note above says what to fix
+      setBusy(true);
+      try {
+        const r = await api('/api/admin/discovered/' + c.id + '/send', { subject: subject.value, message: body.value });
+        c.contactedAt = r.contactedAt;
+        c.contactedCount = (c.contactedCount || 0) + 1;
+        c.seen = true;
+        if (data.mail) { data.mail.sentToday = r.sentToday; data.mail.perDay = r.perDay; }
+        refreshRow(c);
+        setBadge(r.unseen);
+        syncCounts();
+        if (openId === c.id) renderPanel();
+        H.toast('Sent to ' + displayName(c) + '.');
+        if (composer === cm && cm.queue[cm.i] === c) next(true);      // closed or moved on meanwhile: nothing more to do
+      } catch (e) {
+        if (composer === cm && cm.queue[cm.i] === c) { setBusy(false); hint.textContent = e.message; hint.hidden = false; send.focus({ preventScroll: true }); }
+        else H.toast(e.message, true);
+      }
+    });
     const copy = btn('dc-textbtn', ICON.copy + '<span>Copy message</span>');
     copy.addEventListener('click', () => copyText('Subject: ' + subject.value + '\n\n' + body.value, 'Copied the message.'));
-    actions.appendChild(copy);
+    actions.append(send, copy);
     d.appendChild(actions);
-
-    cm.paintOpened = () => {};
-    const status = node('div', 'dc-sentbar');
-    status.hidden = true;
-    d.appendChild(status);
-    function paintOpened() {
-      status.hidden = false;
-      status.innerHTML = '';
-      status.appendChild(node('p', null, 'Your draft should be open now (in a new tab for Gmail, or in your Mail app). Once you’ve sent it, mark this creator as emailed so nobody writes to them twice.'));
-      const row = node('div', 'dc-btnrow');
-      const yes = btn('btn small', ICON.check + '<span>I sent it</span>');
-      yes.addEventListener('click', async () => {
-        yes.disabled = true;
-        if (await setContacted([c], true)) { H.toast('Marked as emailed.'); next(true); } else yes.disabled = false;
-      });
-      const no = btn('dc-textbtn', '<span>Not yet</span>');
-      no.addEventListener('click', () => { status.hidden = true; });
-      row.append(yes, no);
-      status.appendChild(row);
-      try { status.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* old browser: the bar is just further down */ }
-    }
-    const next = (afterMark) => {
-      if (cm.i < cm.queue.length - 1) { cm.i += 1; paintComposer(); } else { closeComposer(); if (afterMark) H.toast('That was the last one.'); }
-    };
 
     const foot = node('footer', 'dc-dlg-foot');
     const tools = node('div', 'dc-tplbtns');
