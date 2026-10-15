@@ -81,9 +81,12 @@ try { app.use(require('compression')()); } catch (e) { /* optional: npm i compre
 const DATA_DIR = process.env.DATA_DIR || path.dirname(UPLOAD_DIR);
 // If creator-inbox.js is missing or fails to load, the rest of the site must
 // still start: this feature switches itself off and says why in the logs.
+// Email through Resend (mailer.js): the form notifications below, and the Send
+// button for creators in the admin. Made here so both share one setup.
+const mailer = require('./mailer')({ siteUrl: SITE_URL });
 let discovered = null;
 try {
-  discovered = require('./creator-inbox')({ requireAdmin, dataDir: DATA_DIR });
+  discovered = require('./creator-inbox')({ requireAdmin, dataDir: DATA_DIR, mail: mailer });
   app.use(discovered.receiver);
 } catch (e) {
   console.error('[warn] Discovered creators is switched off:', e.message);
@@ -384,7 +387,6 @@ app.post('/api/contact', (req, res) => {
 // ---- form submissions (Brands contact + Talents apply) ---------------------
 // Each form is saved to the admin inbox first, then emailed to NOTIFY_TO
 // (default info@brxdge.ca) when RESEND_API_KEY is set. See mailer.js.
-const mailer = require('./mailer')({ siteUrl: SITE_URL });
 const submissions = require('./submissions');       // DATA_DIR is defined near the top
 app.use(submissions({ requireAdmin, dataDir: DATA_DIR, onSubmit: mailer.notifySubmission }));
 
