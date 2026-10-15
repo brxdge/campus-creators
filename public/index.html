@@ -436,25 +436,22 @@
       </div>
     </div>
 
-    <!-- Brand marquee: dim brand names drifting along the bottom of About us,
-         over a glow that a slow light sweep crosses every few seconds. main.js
-         rebuilds this list from the brands in the admin (same list as the
-         Creators in Action tabs); the names printed here are what shows if
-         that can't load. -->
+    <!-- Brand swap: a row of dim brand names along the bottom of About us. Every
+         few seconds the names roll up and out, one after another from left to
+         right, while the next brands rise in from below. main.js builds the row
+         from the brands in the admin (same list as the Creators in Action tabs);
+         the names printed here are what shows if that can't load. -->
     <div class="brand-marquee" id="brandMarquee" role="region" aria-label="Brands we create for">
-      <div class="bm-glow" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-      <div class="bm-viewport">
-        <ul class="bm-track" id="bmTrack">
-          <li class="bm-item">HelloFresh</li>
-          <li class="bm-item">Carlsberg</li>
-          <li class="bm-item">Dirty Devil Vodka</li>
-          <li class="bm-item">Crank Lite Lager</li>
-          <li class="bm-item">Little Buddha Cocktail Co.</li>
-          <li class="bm-item">XLIV Loungewear</li>
-          <li class="bm-item">Bet99 Sportsbook</li>
-          <li class="bm-item">Reign Energy</li>
-        </ul>
-      </div>
+      <ul class="bm-row" id="bmRow">
+        <li class="bm-name">HelloFresh</li>
+        <li class="bm-name">Carlsberg</li>
+        <li class="bm-name">Dirty Devil Vodka</li>
+        <li class="bm-name">Crank Lite Lager</li>
+        <li class="bm-name">Little Buddha Cocktail Co.</li>
+        <li class="bm-name">XLIV Loungewear</li>
+        <li class="bm-name">Bet99 Sportsbook</li>
+        <li class="bm-name">Reign Energy</li>
+      </ul>
     </div>
   </section>
 
