@@ -15,6 +15,17 @@
 //
 // An email problem never loses a message: the form is saved to the admin
 // inbox first, this runs afterwards, and any failure is only logged.
+//
+// Emails to creators (Admin > Discovered creators > Send) go out through the
+// same Resend account:
+//   OUTREACH_FROM       optional. Default: the MAIL_FROM address with "hello@"
+//                       as the name before the @ (the domain must be verified)
+//   OUTREACH_REPLY_TO   optional. Where creators' replies land.
+//                       Default: the first NOTIFY_TO address
+//   MAIL_ADDRESS        optional but recommended: your business mailing address,
+//                       added to the bottom of every email to a creator
+//                       (Canadian anti-spam law asks for it)
+//   OUTREACH_PER_DAY    optional. Most emails to creators per 24 hours. Default 40
 // ============================================================
 const API_URL = process.env.RESEND_API_URL || 'https://api.resend.com/emails';
 const MAX_PER_HOUR = 60;            // flood guard: spam can't bury your inbox
@@ -62,7 +73,7 @@ module.exports = function createMailer(opts = {}) {
 
   async function post(payload) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 10000);
+    const timer = setTimeout(() => ctrl.abort(), Number(process.env.RESEND_TIMEOUT_MS) || 10000);
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
@@ -74,6 +85,7 @@ module.exports = function createMailer(opts = {}) {
       if (!res.ok) {
         const err = new Error('Resend answered ' + res.status + ': ' + body.slice(0, 300));
         err.status = res.status;
+        try { const j = JSON.parse(body); if (j && typeof j.message === 'string') err.detail = j.message.slice(0, 300); } catch (e) { /* not JSON: no detail */ }
         throw err;
       }
       return body;
@@ -87,6 +99,34 @@ module.exports = function createMailer(opts = {}) {
       await sleep(2000);
       return post(payload);
     }
+  }
+
+  // ---------- emails to creators ----------
+  // From a name on the same verified domain as the notifications ("hello@"), unless OUTREACH_FROM says otherwise.
+  // Resend's shared test sender (resend.dev) only works as it is, so it is kept.
+  function outreachFrom() {
+    if (process.env.OUTREACH_FROM && process.env.OUTREACH_FROM.trim()) return process.env.OUTREACH_FROM.trim();
+    const m = from.match(/@([A-Za-z0-9.-]+)>?\s*$/);
+    if (!m || /(^|\.)resend\.dev$/i.test(m[1])) return from;
+    return 'Campus Creators <hello@' + m[1] + '>';
+  }
+  const outFrom = outreachFrom();
+  const replyTo = (process.env.OUTREACH_REPLY_TO || to[0] || '').trim();
+  const address = String(process.env.MAIL_ADDRESS || '').replace(/[\r\n]+/g, ', ').trim();
+  const outreach = { enabled, from: outFrom, replyTo, hasAddress: !!address };
+
+  // One plain-text email to one creator. Never retried: if it times out the email may still have
+  // gone out, and a second copy to a stranger is worse than asking the team to look.
+  async function sendOutreach(msg) {
+    if (!enabled) throw new Error('Email is not set up (RESEND_API_KEY is missing).');
+    let text = String(msg.text || '').trim();
+    if (address && !text.includes(address)) text += '\n\nCampus Creators, ' + address;
+    const payload = { from: outFrom, to: [String(msg.to)], subject: oneLine(msg.subject).slice(0, 200), text };
+    if (/^[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(replyTo)) {
+      payload.reply_to = replyTo;
+      payload.headers = { 'List-Unsubscribe': '<mailto:' + replyTo + '?subject=Unsubscribe>' };
+    }
+    return post(payload);
   }
 
   function build(entry) {
@@ -143,5 +183,5 @@ module.exports = function createMailer(opts = {}) {
     }
   }
 
-  return { enabled, notifySubmission };
+  return { enabled, notifySubmission, sendOutreach, outreach };
 };
