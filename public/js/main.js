@@ -1254,60 +1254,163 @@ if (navLinks) {
   secs.forEach((s) => io.observe(s));
 })();
 
-// ---- brand marquee (bottom of About us) ----
-// Dim brand names drifting along the bottom of the About us section. The list
-// is the same one the Creators in Action tabs use (the brands in the admin), so
-// a brand added or removed there appears or disappears here too. The names
-// printed in index.html are what shows if that can't be loaded, and with
-// reduced motion switched on the names stand still in a row instead of
-// scrolling.
-(function brandMarquee() {
+// ---- brand swap (bottom of About us) ----
+// A row of dim brand names. Every few seconds the whole row changes: the names
+// roll up and out one after another from left to right while the next brands
+// rise in from below (the CSS does the rolling, this decides what is in each
+// slot and when). The list is the same one the Creators in Action tabs use (the
+// brands in the admin), so a brand added or removed there appears or
+// disappears here too; the names printed in index.html are what shows if that
+// can't be loaded. With reduced motion switched on nothing rolls: all the
+// names sit in one row instead. It only runs while it is on screen.
+(function brandSwap() {
   const root = document.getElementById('brandMarquee');
-  const track = document.getElementById('bmTrack');
-  const view = root && root.querySelector('.bm-viewport');
-  if (!root || !track || !view) return;
+  const row = document.getElementById('bmRow');
+  if (!root || !row) return;
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const SPEED = 52;                        // pixels per second
-  let names = Array.from(track.children).map((li) => li.textContent.trim()).filter(Boolean);
-  let drawnWidth = 0;
+
+  const DUR = 780;        // one name rolling out and the next rolling in (ms)
+  const STAGGER = 300;    // each name starts this long after the one on its left
+  const HOLD = 3000;      // quiet time between swaps
+  const FIRST = 1400;     // wait after the row comes into view before the first swap
+  const MIN_SLOT = 230;   // px a name needs; narrower screens show fewer names
+  const MAX_SLOTS = 4;
+
+  let names = Array.from(row.children).map((li) => li.textContent.trim()).filter(Boolean);
+  let slots = 0;
+  let wave = 0;           // how many swaps have happened
+  let cells = [];         // { cur, nxt } per slot
+  let animated = false;
+  let swapping = false;
+  let visible = false;
+  let timer = 0;
+  let commitTimer = 0;
   let resizeTimer = 0;
+  let drawnWidth = 0;
+  let readout = null;     // the full list for screen readers
 
-  function item(name, clone) {
-    const li = document.createElement('li');
-    li.className = 'bm-item';
-    li.textContent = name;
-    if (clone) { li.setAttribute('aria-hidden', 'true'); li.dataset.clone = '1'; }
-    return li;
+  // which brand a slot shows after `w` swaps: each swap moves on by a whole
+  // row, so with 8 brands and 4 slots it alternates between two sets
+  function nameAt(w, i) {
+    const n = names.length;
+    return names[(((w * slots + i) % n) + n) % n];
   }
 
-  // One full set of names, then as many extra copies as it takes to always
-  // fill the screen; the track slides left by exactly one set and starts over,
-  // which is invisible because the copy that lands in its place is identical.
+  function arm(ms) {
+    clearTimeout(timer);
+    timer = 0;
+    if (animated && visible && !swapping) timer = setTimeout(runSwap, ms);
+  }
+
+  function runSwap() {
+    timer = 0;
+    if (!animated || !visible || swapping || document.hidden) return;
+    swapping = true;
+    root.classList.add('is-swapping');
+    commitTimer = setTimeout(commit, (slots - 1) * STAGGER + DUR + 80);
+  }
+
+  // when the last name has landed, make the new set the resting one: same text,
+  // same place, so dropping the animation class changes nothing you can see
+  function commit() {
+    commitTimer = 0;
+    wave++;
+    cells.forEach((c, i) => {
+      c.cur.textContent = nameAt(wave, i);
+      if (c.nxt) c.nxt.textContent = nameAt(wave + 1, i);
+    });
+    root.classList.remove('is-swapping');
+    swapping = false;
+    arm(HOLD);
+  }
+
   function draw() {
+    clearTimeout(timer);
+    clearTimeout(commitTimer);
+    timer = commitTimer = 0;
+    swapping = false;
+    root.classList.remove('is-swapping');
     if (!names.length) return;
-    track.replaceChildren(...names.map((n) => item(n, false)));
-    drawnWidth = view.clientWidth;
-    if (reduce) return;
-    const setW = track.getBoundingClientRect().width;
-    if (!setW) return;
-    const copies = Math.ceil(drawnWidth / setW);
-    for (let c = 0; c < copies; c++) names.forEach((n) => track.appendChild(item(n, true)));
-    track.style.setProperty('--bm-set', setW + 'px');
-    track.style.setProperty('--bm-dur', (setW / SPEED).toFixed(1) + 's');
-    root.classList.add('is-live');
+    drawnWidth = root.clientWidth || window.innerWidth;
+    row.replaceChildren();
+    cells = [];
+
+    if (reduce) {
+      animated = false;
+      row.className = 'bm-row is-static';
+      row.removeAttribute('aria-hidden');
+      names.forEach((n) => {
+        const li = document.createElement('li');
+        li.className = 'bm-name';
+        li.textContent = n;
+        row.appendChild(li);
+      });
+      if (readout) readout.remove();
+      readout = null;
+      return;
+    }
+
+    slots = Math.max(2, Math.min(MAX_SLOTS, Math.floor(drawnWidth / MIN_SLOT)));
+    animated = names.length > slots;
+    if (!animated) slots = names.length;       // few brands: they just stay put
+    row.className = 'bm-row';
+    row.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < slots; i++) {
+      const li = document.createElement('li');
+      li.className = 'bm-slot';
+      li.style.setProperty('--i', String(i));
+      const cur = document.createElement('span');
+      cur.className = 'bm-name is-cur';
+      cur.textContent = nameAt(wave, i);
+      li.appendChild(cur);
+      let nxt = null;
+      if (animated) {
+        nxt = document.createElement('span');
+        nxt.className = 'bm-name is-nxt';
+        nxt.textContent = nameAt(wave + 1, i);
+        li.appendChild(nxt);
+      }
+      row.appendChild(li);
+      cells.push({ cur, nxt });
+    }
+    root.style.setProperty('--bm-dur', DUR + 'ms');
+    root.style.setProperty('--bm-stagger', STAGGER + 'ms');
+
+    // the row is decoration for sighted visitors; screen readers get the list once
+    if (!readout) {
+      readout = document.createElement('ul');
+      readout.className = 'sr-only';
+      root.appendChild(readout);
+    }
+    readout.replaceChildren(...names.map((n) => {
+      const li = document.createElement('li');
+      li.textContent = n;
+      return li;
+    }));
+    arm(FIRST);
   }
 
-  // measure once the display font is in, otherwise the loop length is off
-  if (document.fonts && document.fonts.load) {
-    document.fonts.load('1em Anton').then(draw, draw);
+  draw();
+
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        visible = e.isIntersecting;
+        if (visible) arm(FIRST);
+        else { clearTimeout(timer); timer = 0; }
+      });
+    }, { threshold: 0.6 }).observe(root);
   } else {
-    window.addEventListener('load', draw);
+    visible = true;
+    arm(FIRST);
   }
+
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) arm(FIRST); });
 
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (Math.abs(view.clientWidth - drawnWidth) > 24) draw();
+      if (Math.abs(root.clientWidth - drawnWidth) > 24) draw();
     }, 200);
   });
 
@@ -1316,6 +1419,7 @@ if (navLinks) {
     if (!fresh.length) return;
     if (fresh.length === names.length && fresh.every((n, i) => n === names[i])) return;
     names = fresh;
+    wave = 0;
     draw();
   });
 })();
