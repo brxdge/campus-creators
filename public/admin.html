@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/admin.css?v=9">
+<link rel="stylesheet" href="css/admin.css?v=10">
 </head>
 <body>
 
@@ -40,21 +40,42 @@
     <nav class="side-nav" id="sideNav">
       <a href="#dashboard" data-view="dashboard"><span class="ico">&#9638;</span>Dashboard</a>
 
-      <p class="side-group">Inbox</p>
-      <a href="#inbox-brand" data-view="inbox-brand"><span class="ico">&#9993;</span>Brand enquiries<span class="badge" data-badge="brand" hidden></span></a>
-      <a href="#inbox-talent" data-view="inbox-talent"><span class="ico">&#9998;</span>Talent applications<span class="badge" data-badge="talent" hidden></span></a>
-
-      <p class="side-group">Creators</p>
-      <a href="#discovered" data-view="discovered"><span class="ico">&#9678;</span>Discovered creators<span class="badge" data-dc-badge hidden></span></a>
-
-      <p class="side-group">Brands page</p>
-      <a href="#brands" data-view="brands"><span class="ico">&#9733;</span>Creators in Action</a>
-      <a href="#services" data-view="services"><span class="ico">&#9635;</span>What We Do</a>
-      <a href="#how" data-view="how"><span class="ico">&#9312;</span>How It Works</a>
-      <a href="#work" data-view="work"><span class="ico">&#9636;</span>The Work</a>
-
-      <p class="side-group">Talents page</p>
-      <a href="#roster" data-view="roster"><span class="ico">&#9786;</span>Campus Ambassadors</a>
+      <div class="side-section" data-group="inbox">
+        <button type="button" class="side-group" id="sg-inbox" aria-expanded="true" aria-controls="sgl-inbox"><span class="side-group-name">Inbox</span><span class="side-group-count" hidden></span><svg class="side-chev" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true" focusable="false"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="side-items" id="sgl-inbox" role="group" aria-labelledby="sg-inbox">
+          <div class="side-items-in">
+            <a href="#inbox-brand" data-view="inbox-brand"><span class="ico">&#9993;</span>Brand enquiries<span class="badge" data-badge="brand" hidden></span></a>
+            <a href="#inbox-talent" data-view="inbox-talent"><span class="ico">&#9998;</span>Talent applications<span class="badge" data-badge="talent" hidden></span></a>
+          </div>
+        </div>
+      </div>
+      <div class="side-section" data-group="creators">
+        <button type="button" class="side-group" id="sg-creators" aria-expanded="true" aria-controls="sgl-creators"><span class="side-group-name">Creators</span><span class="side-group-count" hidden></span><svg class="side-chev" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true" focusable="false"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="side-items" id="sgl-creators" role="group" aria-labelledby="sg-creators">
+          <div class="side-items-in">
+            <a href="#discovered" data-view="discovered"><span class="ico">&#9678;</span>Discovered creators<span class="badge" data-dc-badge hidden></span></a>
+          </div>
+        </div>
+      </div>
+      <div class="side-section" data-group="brands">
+        <button type="button" class="side-group" id="sg-brands" aria-expanded="true" aria-controls="sgl-brands"><span class="side-group-name">Brands page</span><span class="side-group-count" hidden></span><svg class="side-chev" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true" focusable="false"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="side-items" id="sgl-brands" role="group" aria-labelledby="sg-brands">
+          <div class="side-items-in">
+            <a href="#brands" data-view="brands"><span class="ico">&#9733;</span>Creators in Action</a>
+            <a href="#services" data-view="services"><span class="ico">&#9635;</span>What We Do</a>
+            <a href="#how" data-view="how"><span class="ico">&#9312;</span>How It Works</a>
+            <a href="#work" data-view="work"><span class="ico">&#9636;</span>The Work</a>
+          </div>
+        </div>
+      </div>
+      <div class="side-section" data-group="talents">
+        <button type="button" class="side-group" id="sg-talents" aria-expanded="true" aria-controls="sgl-talents"><span class="side-group-name">Talents page</span><span class="side-group-count" hidden></span><svg class="side-chev" viewBox="0 0 10 10" width="10" height="10" aria-hidden="true" focusable="false"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="side-items" id="sgl-talents" role="group" aria-labelledby="sg-talents">
+          <div class="side-items-in">
+            <a href="#roster" data-view="roster"><span class="ico">&#9786;</span>Campus Ambassadors</a>
+          </div>
+        </div>
+      </div>
     </nav>
 
     <div class="side-foot">
@@ -83,5 +104,6 @@
 
 <script src="js/admin.js?v=10"></script>
 <script src="js/admin-discovered.js?v=2"></script>
+<script src="js/admin-sidebar.js?v=1"></script>
 </body>
 </html>
