@@ -11,6 +11,9 @@
 //   GET    /api/admin/discovered/count    (admin only) totals, for the sidebar badge
 //   GET    /api/admin/discovered/:id/avatar  (admin only) the creator's photo
 //   POST   /api/admin/discovered/seen     (admin only) mark as seen (or back to new)
+//   POST   /api/admin/discovered/:id/email  (admin only) add / change / clear a creator's email
+//   POST   /api/admin/discovered/contacted  (admin only) note that creators were emailed (or undo)
+//   POST   /api/admin/discovered/template   (admin only) save the email message the team starts from
 //   POST   /api/admin/discovered/delete   (admin only) delete several
 //   DELETE /api/admin/discovered/:id      (admin only) delete one
 //
@@ -22,7 +25,14 @@
 // security rules block images from other websites, so when a creator arrives
 // with a photo link the website downloads its own private copy (only from
 // TikTok's image servers, small images only) and shows that in the admin. If
-// the link has already expired, the card simply shows initials.
+// the link has already expired, the card simply shows initials. Each delivery
+// also records how many picture links came with it and how many were saved,
+// so the admin can say why pictures are missing instead of leaving it a mystery.
+//
+// Emails: an address is taken from what Creator Search sends (email, contact
+// email ...), else from the creator's bio text, else one the team types in.
+// The website never sends email by itself: the admin opens a ready-made draft
+// in the team's own mail, and only records that a creator was emailed.
 //
 // Setup: set CREATOR_SEARCH_SECRET in Railway Variables (32+ random
 // characters) and put the same value in Creator Search. Until it is set the
@@ -59,6 +69,23 @@ const digest = (s) => crypto.createHash('sha256').update(String(s)).digest();
 const safeEq = (a, b) => crypto.timingSafeEqual(digest(a), digest(b));
 const norm = (k) => String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
 const isEmpty = (v) => v == null || v === '' || (typeof v === 'string' && !v.trim());
+
+// ---------- email addresses ----------
+const EMAIL_PART = '[A-Za-z0-9][A-Za-z0-9._%+\\-]{0,63}@[A-Za-z0-9](?:[A-Za-z0-9\\-]{0,62}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9\\-]{0,62}[A-Za-z0-9])?)*\\.[A-Za-z]{2,24}';
+const EMAIL_FIND = new RegExp(EMAIL_PART, 'g');
+const EMAIL_ONLY = new RegExp('^' + EMAIL_PART + '$');
+const NOT_EMAIL_TLD = /\.(png|jpe?g|gif|webp|svg|mp4|mov|css|js)$/i;       // "icon@2x.png" and friends
+function cleanEmail(v) {
+  let s = String(v == null ? '' : v).trim().replace(/^mailto:/i, '').replace(/\?.*$/, '').trim().toLowerCase();
+  if (!s || s.length > 120 || !EMAIL_ONLY.test(s) || NOT_EMAIL_TLD.test(s) || /\.\./.test(s)) return '';
+  return s;
+}
+// the first address written in a piece of text (a bio), or ''
+function findEmail(t) {
+  const m = String(t || '').match(EMAIL_FIND) || [];
+  for (const x of m) { const e = cleanEmail(x); if (e) return e; }
+  return '';
+}
 
 // ---------- cleaning ----------
 function text(v, max) {
@@ -232,12 +259,39 @@ function normalise(raw, fallbackCollection) {
   if (cat !== undefined) out.businessCategory = oneLine(cat, 60);
   const since = dateOnly(pick(m, ['ontiktoksince', 'since', 'createdat', 'createtime', 'joined']));
   if (since) out.tiktokSince = since;
+  const mail = cleanEmail(pick(m, ['email', 'emailaddress', 'contactemail', 'businessemail', 'bioemail', 'publicemail', 'publicemailaddress']));
+  if (mail) out.emailSent = mail;
   const photo = imageUrl(pick(m, ['avatar', 'avatarurl', 'avatarlarger', 'avatarmedium', 'avatarthumb', 'originalavatarurl',
     'profilepicture', 'profileimage', 'profilepic', 'picture', 'photo', 'image']));
   if (photo) out.avatarSrc = photo;                    // used once to download a copy, never stored
   const own = collectionNames(pick(m, COLLECTION_KEYS));
   out.collections = own.length ? own : fallbackCollection;
   return out;
+}
+
+// ---------- the message the team starts from when emailing a creator ----------
+// {name} becomes the creator's first name and {handle} their TikTok handle; the
+// admin fills these in and the team edits the draft before anything is sent.
+const DEFAULT_TEMPLATE = {
+  subject: 'Collab with Campus Creators?',
+  body: [
+    'Hi {name},',
+    '',
+    'I came across your TikTok (@{handle}) and really like your content.',
+    '',
+    'I\u2019m with Campus Creators, a Toronto agency that connects brands with student and campus creators for content and campaigns. We\u2019re lining up new creators for upcoming brand work and I\u2019d love to tell you a bit more.',
+    '',
+    'Would you be open to a quick chat, or a reply here?',
+    '',
+    'Thanks,',
+    'Campus Creators',
+    'https://campuscreators.ca',
+    '',
+    'If you\u2019d rather not hear from us, just reply \u201cno thanks\u201d and we won\u2019t email you again.',
+  ].join('\n'),
+};
+function templateText(v, max) {
+  return String(v == null ? '' : v).replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').slice(0, max).trim();
 }
 
 // ---------- the module ----------
@@ -258,8 +312,8 @@ module.exports = function creatorInbox(opts = {}) {
       const s = JSON.parse(fs.readFileSync(file, 'utf8'));
       const items = Array.isArray(s.items) ? s.items : [];
       const maxId = items.reduce((mx, i) => Math.max(mx, Number(i.id) || 0), 0);
-      return { nextId: Math.max(s.nextId || 1, maxId + 1), items, deliveries: Array.isArray(s.deliveries) ? s.deliveries : [] };
-    } catch (e) { return { nextId: 1, items: [], deliveries: [] }; }
+      return { nextId: Math.max(s.nextId || 1, maxId + 1), items, deliveries: Array.isArray(s.deliveries) ? s.deliveries : [], settings: s.settings && typeof s.settings === 'object' ? s.settings : {} };
+    } catch (e) { return { nextId: 1, items: [], deliveries: [], settings: {} }; }
   }
   function write(s) {
     const tmp = file + '.tmp';
@@ -273,40 +327,65 @@ module.exports = function creatorInbox(opts = {}) {
   let active = 0;
   const unlinkPhoto = (name) => { if (name && /^\d+\.(jpg|png|webp)$/.test(name)) fs.unlink(path.join(avatarDir, name), () => {}); };
 
+  // what happened to one picture, recorded on its creator and on the delivery it came with
+  function photoResult(job, savedName, reason) {
+    const st = read();
+    const it = st.items.find((i) => i.id === job.id);
+    const d = st.deliveries.find((x) => x.at === job.at);
+    if (d) {
+      if (savedName) d.photosSaved = (d.photosSaved || 0) + 1;
+      else { d.photosFailed = (d.photosFailed || 0) + 1; if (!d.photoError) d.photoError = reason; }
+    }
+    if (it) {
+      if (savedName) {
+        if (it.avatarFile && it.avatarFile !== savedName) unlinkPhoto(it.avatarFile);
+        it.avatarFile = savedName; it.avatarKey = photoKey(job.src); it.avatarAt = Date.now(); delete it.photoError;
+      } else it.photoError = reason;
+    } else if (savedName) unlinkPhoto(savedName);                // the creator was deleted meanwhile
+    if (it || d) write(st);
+  }
+
   async function fetchPhoto(job) {
-    if (typeof fetch !== 'function') return;                    // very old Node: photos stay off
+    if (typeof fetch !== 'function') return photoResult(job, null, 'this server cannot download pictures');
     let u;
-    try { u = new URL(job.src); } catch (e) { return; }
-    if (!photoAllowed(u)) return;
+    try { u = new URL(job.src); } catch (e) { return photoResult(job, null, 'the picture link is not a web address'); }
+    if (!photoAllowed(u)) return photoResult(job, null, 'picture links from ' + u.hostname + ' are not allowed');
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), opts.photoTimeoutMs || AVATAR_TIMEOUT_MS);
+    let reason = 'the download failed';
     try {
-      const r = await fetch(u.href, { signal: ctrl.signal, redirect: 'error', headers: { Accept: 'image/*', 'User-Agent': 'Mozilla/5.0 (compatible; CampusCreatorsAdmin)' } });
-      if (!r.ok || !r.body) return;
-      if (Number(r.headers.get('content-length')) > MAX_AVATAR) return;
+      let r = null;
+      for (let hop = 0; hop <= 3; hop++) {                       // follow a few redirects, but only to allowed image servers
+        r = await fetch(u.href, { signal: ctrl.signal, redirect: 'manual', headers: { Accept: 'image/*', 'User-Agent': 'Mozilla/5.0 (compatible; CampusCreatorsAdmin)' } });
+        const loc = r.status >= 300 && r.status < 400 ? r.headers.get('location') : null;
+        if (!loc) break;
+        let next;
+        try { next = new URL(loc, u); } catch (e) { r = null; break; }
+        if (!photoAllowed(next)) { reason = 'the picture link redirected to ' + next.hostname + ', which is not allowed'; r = null; break; }
+        u = next;
+        r = null;
+      }
+      if (!r) return photoResult(job, null, reason);
+      if (!r.ok || !r.body) return photoResult(job, null, r.status === 403 || r.status === 410 ? 'the picture link had expired (HTTP ' + r.status + ')' : 'HTTP ' + r.status);
+      if (Number(r.headers.get('content-length')) > MAX_AVATAR) return photoResult(job, null, 'the picture was too large');
       const chunks = [];
       let size = 0;
       for await (const c of r.body) {
         size += c.length;
-        if (size > MAX_AVATAR) { ctrl.abort(); return; }
+        if (size > MAX_AVATAR) { ctrl.abort(); return photoResult(job, null, 'the picture was too large'); }
         chunks.push(c);
       }
       const buf = Buffer.concat(chunks);
       const ext = sniffImage(buf);                              // the bytes decide, not the link or the headers
-      if (!ext) return;
+      if (!ext) return photoResult(job, null, 'the link was not a picture');
       fs.mkdirSync(avatarDir, { recursive: true });
       const name = job.id + '.' + ext;
       fs.writeFileSync(path.join(avatarDir, name + '.tmp'), buf);
       fs.renameSync(path.join(avatarDir, name + '.tmp'), path.join(avatarDir, name));
-      const st = read();                                        // fresh copy: the creator may have been deleted meanwhile
-      const it = st.items.find((i) => i.id === job.id);
-      if (!it) { unlinkPhoto(name); return; }
-      if (it.avatarFile && it.avatarFile !== name) unlinkPhoto(it.avatarFile);
-      it.avatarFile = name;
-      it.avatarKey = photoKey(job.src);
-      it.avatarAt = Date.now();
-      write(st);
-    } catch (e) { /* expired link, blocked, slow: the card shows initials */ } finally { clearTimeout(timer); }
+      photoResult(job, name, '');
+    } catch (e) {
+      photoResult(job, null, e && e.name === 'AbortError' ? 'the download timed out' : 'the download failed');
+    } finally { clearTimeout(timer); }
   }
   function pump() {
     while (active < AVATAR_PARALLEL && queue.length) {
@@ -318,6 +397,26 @@ module.exports = function creatorInbox(opts = {}) {
   function enqueuePhotos(jobs) {
     for (const j of jobs) if (!queued.has(j.id)) { queued.add(j.id); queue.push(j); }
     pump();
+  }
+
+  // one creator as the admin sees it: the private photo file name and the raw email
+  // fields are folded into plain `avatar`, `email` and `emailSource`
+  function view(i) {
+    const o = Object.assign({}, i, { avatar: !!i.avatarFile, avatarAt: i.avatarAt || 0 });
+    delete o.avatarFile; delete o.avatarKey;
+    const fromBio = findEmail(i.bio);
+    o.email = i.emailManual || i.emailSent || fromBio || '';
+    o.emailSource = i.emailManual ? 'added' : i.emailSent ? 'sent' : fromBio ? 'bio' : '';
+    delete o.emailManual; delete o.emailSent;
+    o.contactedAt = i.contactedAt || '';
+    o.contactedCount = i.contactedCount || 0;
+    return o;
+  }
+  function currentTemplate(settings) {
+    const t = settings && settings.emailTemplate;
+    return t && (t.subject || t.body)
+      ? { subject: t.subject || '', body: t.body || '', custom: true }
+      : { subject: DEFAULT_TEMPLATE.subject, body: DEFAULT_TEMPLATE.body, custom: false };
   }
 
   // ===== receiver (public address, protected by the secret) =====
@@ -398,11 +497,11 @@ module.exports = function creatorInbox(opts = {}) {
         delete n.avatarSrc;
         if (ex) {
           for (const k of ['nickname', 'bio', 'bioLink', 'followers', 'following', 'videos', 'likes', 'verified',
-            'business', 'private', 'seller', 'businessCategory', 'tiktokSince']) if (n[k] !== undefined) ex[k] = n[k];
+            'business', 'private', 'seller', 'businessCategory', 'tiktokSince', 'emailSent']) if (n[k] !== undefined) ex[k] = n[k];
           ex.collections = (ex.collections || []).concat(n.collections.filter((c) => !(ex.collections || []).includes(c))).slice(0, MAX_COLLECTIONS);
           ex.updatedAt = now;
           ex.deliveries = (ex.deliveries || 1) + 1;
-          if (photoSrc && (ex.avatarKey !== photoKey(photoSrc) || !ex.avatarFile)) photoJobs.push({ id: ex.id, src: photoSrc });
+          if (photoSrc && (ex.avatarKey !== photoKey(photoSrc) || !ex.avatarFile)) photoJobs.push({ id: ex.id, src: photoSrc, at: now });
           updated += 1;
         } else if (store.items.length >= MAX_STORED) {
           full += 1;
@@ -415,13 +514,14 @@ module.exports = function creatorInbox(opts = {}) {
           store.nextId += 1;
           store.items.push(item);
           byHandle.set(key, item);
-          if (photoSrc) photoJobs.push({ id: item.id, src: photoSrc });
+          if (photoSrc) photoJobs.push({ id: item.id, src: photoSrc, at: now });
           added += 1;
         }
       }
     }
     const collection = topNames[0] || (people[0] && people[0].collections[0]) || '';
-    store.deliveries.unshift({ at: now, test: isTest, received: people.length, added, updated, skipped: skipped + full, collection });
+    store.deliveries.unshift({ at: now, test: isTest, received: people.length, added, updated, skipped: skipped + full, collection,
+      photoLinks: photoJobs.length, photosSaved: 0, photosFailed: 0, withEmail: people.filter((n) => n.emailSent).length });
     store.deliveries = store.deliveries.slice(0, 20);
     try { write(store); } catch (e) { console.error('[creator-inbox] could not save:', e.message); return res.status(500).json({ error: 'The website could not save the creators.' }); }
 
@@ -439,7 +539,7 @@ module.exports = function creatorInbox(opts = {}) {
   // ===== admin (behind the admin login) =====
   const admin = express.Router();
   const json = express.json({ limit: '50kb' });
-  const ids = (body) => (Array.isArray(body && body.ids) ? body.ids.map(Number).filter((n) => Number.isInteger(n)) : []);
+  const ids = (body) => (Array.isArray(body && body.ids) ? body.ids.map(Number).filter((n) => Number.isInteger(n) && n > 0) : []);
 
   admin.get('/api/admin/discovered', requireAdmin, (req, res) => {
     res.set('Cache-Control', 'no-store');
@@ -449,15 +549,12 @@ module.exports = function creatorInbox(opts = {}) {
     for (const i of items) for (const c of (i.collections || [])) counts.set(c, (counts.get(c) || 0) + 1);
     const secret = getSecret();
     res.json({
-      items: items.map((i) => {
-        const o = Object.assign({}, i, { avatar: !!i.avatarFile, avatarAt: i.avatarAt || 0 });
-        delete o.avatarFile; delete o.avatarKey;
-        return o;
-      }),
+      items: items.map(view),
       total: items.length,
       unseen: items.filter((i) => !i.seen).length,
       collections: [...counts].map(([name, n]) => ({ name, count: n })).sort((a, b) => a.name.localeCompare(b.name)),
       deliveries: s.deliveries,
+      emailTemplate: currentTemplate(s.settings),
       receiver: { path: RECEIVE_PATH, ready: secret.length >= MIN_SECRET, shortSecret: !!secret && secret.length < MIN_SECRET },
     });
   });
@@ -498,6 +595,52 @@ module.exports = function creatorInbox(opts = {}) {
     res.json({ ok: true, removed, unseen: keep.filter((i) => !i.seen).length });
   });
 
+  // add, change or clear the address for one creator (typed in by the team)
+  admin.post('/api/admin/discovered/:id/email', requireAdmin, json, (req, res) => {
+    const id = Number(req.params.id);
+    const s = read();
+    const it = s.items.find((i) => i.id === id);
+    if (!it) return res.status(404).json({ error: 'Not found.' });
+    const raw = String((req.body && req.body.email) || '').trim();
+    if (!raw) delete it.emailManual;
+    else {
+      const e = cleanEmail(raw);
+      if (!e) return res.status(400).json({ error: 'That doesn’t look like an email address.' });
+      it.emailManual = e;
+    }
+    write(s);
+    res.json({ ok: true, item: view(it) });
+  });
+
+  // note that creators were emailed (or take it back). Emailing someone also counts as having seen them.
+  admin.post('/api/admin/discovered/contacted', requireAdmin, json, (req, res) => {
+    const want = new Set(ids(req.body));
+    if (!want.size) return res.status(400).json({ error: 'Choose at least one creator.' });
+    const on = !(req.body && req.body.contacted === false);
+    const now = new Date().toISOString();
+    const s = read();
+    let n = 0;
+    for (const i of s.items) {
+      if (!want.has(i.id)) continue;
+      if (on) { i.contactedAt = now; i.contactedCount = (i.contactedCount || 0) + 1; i.seen = true; }
+      else { delete i.contactedAt; delete i.contactedCount; }
+      n += 1;
+    }
+    if (n) write(s);
+    res.json({ ok: true, changed: n, contactedAt: on ? now : '', unseen: s.items.filter((i) => !i.seen).length });
+  });
+
+  // the starting message for emails to creators, shared by everyone who uses the admin
+  admin.post('/api/admin/discovered/template', requireAdmin, json, (req, res) => {
+    const subject = templateText(req.body && req.body.subject, 200).replace(/\n+/g, ' ');
+    const body = templateText(req.body && req.body.body, 4000);
+    const s = read();
+    if (!subject && !body) delete s.settings.emailTemplate;     // empty = back to the built-in message
+    else s.settings.emailTemplate = { subject, body };
+    write(s);
+    res.json({ ok: true, emailTemplate: currentTemplate(s.settings) });
+  });
+
   admin.delete('/api/admin/discovered/:id', requireAdmin, (req, res) => {
     const id = Number(req.params.id);
     const s = read();
@@ -513,4 +656,4 @@ module.exports = function creatorInbox(opts = {}) {
 };
 
 // exposed for tests
-module.exports._internals = { normalise, extract, count, dateOnly, AVATAR_HOSTS, sniffImage, photoKey };
+module.exports._internals = { normalise, extract, count, dateOnly, AVATAR_HOSTS, sniffImage, photoKey, cleanEmail, findEmail, DEFAULT_TEMPLATE };
