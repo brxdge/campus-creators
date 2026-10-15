@@ -376,14 +376,17 @@ app.get('/media/:file', (req, res) => {
 });
 
 // ---- contact ---------------------------------------------------------------
-// TODO: wire to Resend. Needs RESEND_API_KEY.
+// Unused: the site's forms post to /api/submissions below.
 app.post('/api/contact', (req, res) => {
   res.status(501).json({ error: 'Contact endpoint not wired up yet.' });
 });
 
 // ---- form submissions (Brands contact + Talents apply) ---------------------
+// Each form is saved to the admin inbox first, then emailed to NOTIFY_TO
+// (default info@brxdge.ca) when RESEND_API_KEY is set. See mailer.js.
+const mailer = require('./mailer')({ siteUrl: SITE_URL });
 const submissions = require('./submissions');       // DATA_DIR is defined near the top
-app.use(submissions({ requireAdmin, dataDir: DATA_DIR }));
+app.use(submissions({ requireAdmin, dataDir: DATA_DIR, onSubmit: mailer.notifySubmission }));
 
 // ---- Campus Ambassadors (Talents page) -------------------------------------
 const roster = require('./roster');
