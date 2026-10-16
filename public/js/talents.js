@@ -292,54 +292,8 @@
     });
   }
 
-  // ---------- apply form: saved on the server, viewable in the admin inbox ----------
-  function setupApplyForm() {
-    const form = document.getElementById('applyForm');
-    const msg = document.getElementById('applyFormMsg');
-    if (!form || !msg) return;
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      // native validation first
-      if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-      }
-      // at least one interest required (checkbox groups aren't covered by required)
-      const interests = Array.from(form.querySelectorAll('input[name="interests"]:checked')).map((c) => c.value);
-      if (!interests.length) {
-        msg.textContent = 'Please pick at least one interest so we can match you well.';
-        msg.className = 'tal-form-msg show err';
-        return;
-      }
-
-      const fields = {};
-      new FormData(form).forEach((v, k) => { if (k !== 'interests' && k !== 'website') fields[k] = v; });
-      fields.interests = interests;
-      const honeypot = form.querySelector('[name=website]');
-      const btn = form.querySelector('[type=submit]');
-      if (btn) btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/submissions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'talent', website: honeypot ? honeypot.value : '', fields }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
-        form.reset();
-        msg.textContent = "Application received! We'll reach out when there's a campaign that fits you.";
-        msg.className = 'tal-form-msg show';
-      } catch (err) {
-        msg.textContent = err.message && err.message.indexOf('fetch') === -1 ? err.message : 'Could not send right now. Please try again.';
-        msg.className = 'tal-form-msg show err';
-      } finally {
-        if (btn) btn.disabled = false;
-      }
-    });
-  }
+  // (The Apply form itself, with its checks and the "sent" screen, lives in forms.js.
+  // It used to be handled here as well, which sent every application twice.)
 
   // ---------- card FX: cursor spotlight (+ 3D tilt on why cards) ----------
   function setupCardFx() {
@@ -469,7 +423,6 @@
     loadRoster();
     setupReveal();
     setupApplyModal();
-    setupApplyForm();
     setupCardFx();
     setupRosterDrag();
     setupFaqAccordion();
