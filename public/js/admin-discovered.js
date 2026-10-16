@@ -849,7 +849,7 @@
     const last = ds[0];
     let why = 'Pictures haven’t come through from Creator Search yet, so initials are shown instead.';
     if (last && typeof last.photoLinks === 'number') {
-      if (last.photoLinks === 0) why = 'The last delivery had no picture links in it, so initials are shown instead.';
+      if (last.photoLinks === 0) why = 'The last delivery had no pictures in it, so initials are shown instead.';
       else if (!last.photosSaved && last.photosFailed) why = 'Picture links did arrive, but the website couldn’t save them' + (last.photoError ? ': ' + last.photoError + '.' : '.');
       else if (last.photosSaved < last.photoLinks && !last.photosFailed) why = 'Pictures are still being saved. Refresh in a moment.';
     }
@@ -864,9 +864,9 @@
     ui.note.appendChild(top);
     const det = node('div', 'dc-note-more');
     det.hidden = true;
-    det.innerHTML = '<p>The website saves its own copy of each creator’s picture when they arrive, but only if Creator Search includes the picture link with them, in a field called <code>avatar</code>.</p>' +
-      '<p>TikTok picture links stop working after a day or so, so Creator Search has to send the link at the moment it sends the creator. A link it saved earlier will no longer work.</p>' +
-      '<p>Creators already here get their pictures the next time Creator Search sends them again.</p>';
+    det.innerHTML = '<p>The website saves its own copy of each creator’s picture when they arrive. In Creator Search, open <b>Choose details</b> and tap <b>Profile picture</b>: it then sends its saved copy of the picture with each creator.</p>' +
+      '<p>A TikTok picture link (in a field called <code>avatar</code>) also works, but those links stop working after a day or so.</p>' +
+      '<p>Creators already here get their pictures the next time Creator Search sends them again. In Creator Search, switch off <b>Skip creators this flow already sent</b> for that one run.</p>';
     ui.note.appendChild(det);
     more.addEventListener('click', () => {
       det.hidden = !det.hidden;
