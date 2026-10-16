@@ -178,6 +178,9 @@
     const video = document.getElementById('processVideo');
     const section = document.getElementById('process');
     if (!video || !section) return;
+    // phones: a full-section blurred video is the heaviest thing to draw on a
+    // phone, so it stays off there (the section keeps its dark background)
+    if (window.matchMedia('(max-width: 900px)').matches) return;
 
     // Source is a static, hardcoded file (see the video tag's src
     // attribute in index.html) — not pulled from the admin portal's
