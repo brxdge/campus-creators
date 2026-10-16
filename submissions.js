@@ -74,6 +74,22 @@ module.exports = function submissions(opts = {}) {
 
   const MAX_STORED = 10000;   // disk-flood guard
 
+  // The same person sending the same form twice within a minute (a double tap, a retry after a
+  // slow connection) is saved and emailed once. The second copy gets the same "ok" reply.
+  // A talent application counts as the same by email + name; a brand message by email, name,
+  // company and the message itself, so a corrected message is never thrown away.
+  const recentSame = new Map();
+  const low = (v) => String(v || '').trim().toLowerCase();
+  function sameKey(type, data) {
+    const who = type === 'brand' ? [data.email, data.firstName, data.company, data.message] : [data.email, data.firstName, data.lastName];
+    return crypto.createHash('sha1').update(type + '\n' + who.map(low).join('\n')).digest('hex');
+  }
+  function seenJustNow(key) {
+    const now = Date.now();
+    for (const [k, t] of recentSame) if (now - t > 60 * 1000) recentSame.delete(k);
+    return recentSame.has(key);
+  }
+
   // strip control characters (keep newlines/tabs in messages) and cap length
   const strip = (x) => String(x).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim();
   function clean(v) {
@@ -104,6 +120,9 @@ module.exports = function submissions(opts = {}) {
     if (missing.length) return res.status(400).json({ error: 'Please fill in all required fields.' });
     if (data.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) return res.status(400).json({ error: 'Please enter a valid email.' });
 
+    const again = sameKey(body.type, data);
+    if (seenJustNow(again)) return res.json({ ok: true });
+
     const entry = {
       id: crypto.randomUUID(),
       type: body.type,
@@ -116,6 +135,7 @@ module.exports = function submissions(opts = {}) {
       if (list.length >= MAX_STORED) return res.status(503).json({ error: 'We can\u2019t accept new messages right now. Please email us instead.' });
       list.unshift(entry);
       writeAll(list);
+      recentSame.set(again, Date.now());
     } catch (err) {
       console.error('[submissions] save failed:', err);
       return res.status(500).json({ error: 'Could not save your message. Please try again.' });
