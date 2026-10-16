@@ -1,5 +1,5 @@
 // ============================================================
-// Brands page — scroll choreography.   build: 2026-10-07 v20
+// Brands page — scroll choreography.   build: 2026-10-16 v21
 //
 // One continuous motion sequence instead of section-by-section jumps:
 //   Lenis smooth scroll  ->  GSAP ScrollTrigger drives every section.
@@ -18,7 +18,8 @@
 //   FAQ / Contact type scales into place, footer lifts
 //
 // Only transform / opacity / clip-path are animated. Desktop gets the full
-// sequence; phones get a lighter version (no pins, no smooth scroll);
+// sequence; phones get a lighter version (no pins, native scrolling, each
+// effect plays once as it comes into view);
 // prefers-reduced-motion gets none of it.
 // ============================================================
 (function brandsMotion() {
@@ -488,27 +489,42 @@
   }
 
   mm.add('(max-width: 900px)', () => {
-    const cleanupTouch = touchGlide('#hero, #services, #clientsSection, #process, #sections .band, #work, #about, #faq, #contact');
+    // Phones scroll with the phone's own scrolling: smooth momentum, the browser
+    // bars collapse as usual, and no script runs while a finger is moving.
+    // (The earlier "one swipe = one section" takeover cancelled every touch and
+    // drove the scroll from script, which stutters on iPhones. Set this to true
+    // to bring it back.)
+    const TOUCH_GLIDE = false;
+    const cleanupTouch = TOUCH_GLIDE
+      ? touchGlide('#hero, #services, #clientsSection, #process, #sections .band, #work, #about, #faq, #contact')
+      : null;
+
+    // Each effect below plays ONCE, by time, when its piece scrolls into view,
+    // and then clears itself. Tied to the finger they hung half-finished
+    // whenever scrolling paused (looks cut off / misaligned) and re-drew big
+    // clipped areas on every single scroll frame. clamp() keeps a piece near the
+    // very bottom of the page from waiting for a position it can never reach.
+    const when = (trigger, start) => ({ trigger, start: 'clamp(' + (start || 'top 88%') + ')', once: true });
+
     const band = $('.band');
     if (band) {
-      gsap.fromTo(band, { clipPath: 'inset(8% 6% 8% 6% round 28px)' }, { clipPath: 'inset(0% 0% 0% 0% round 0px)', ease: 'none',
-        scrollTrigger: { trigger: band, start: 'top bottom', end: 'top 30%', scrub: true } });
+      gsap.fromTo(band, { clipPath: 'inset(8% 6% 8% 6% round 28px)' },
+        { clipPath: 'inset(0% 0% 0% 0% round 0px)', duration: 0.9, ease: 'power3.out', clearProps: 'clipPath', scrollTrigger: when(band) });
     }
     if ($('.wk-screen')) {
-      gsap.timeline({ scrollTrigger: { trigger: '#work', start: 'top 90%', end: 'top 20%', scrub: true } })
-        .fromTo('.wk-screen', { clipPath: 'inset(10% 12% 10% 12% round 26px)' }, { clipPath: 'inset(0% 0% 0% 0% round 18px)', ease: 'none' }, 0)
-        .fromTo('.wk-slides', { scale: 1.25 }, { scale: 1, ease: 'none' }, 0);
+      gsap.timeline({ scrollTrigger: when('#work', 'top 85%'), defaults: { duration: 1, ease: 'power3.out' } })
+        .fromTo('.wk-screen', { clipPath: 'inset(10% 12% 10% 12% round 26px)' }, { clipPath: 'inset(0% 0% 0% 0% round 18px)', clearProps: 'clipPath' }, 0)
+        .fromTo('.wk-slides', { scale: 1.25 }, { scale: 1 }, 0);
     }
     const about = $('#about');
     if (about) {
-      gsap.fromTo(about, { clipPath: 'circle(0% at 50% 100%)' }, { clipPath: 'circle(150% at 50% 100%)', ease: 'none',
-        scrollTrigger: { trigger: about, start: 'top bottom', end: 'top 25%', scrub: true } });
+      gsap.fromTo(about, { clipPath: 'circle(0% at 50% 100%)' },
+        { clipPath: 'circle(150% at 50% 100%)', duration: 1.1, ease: 'power2.out', clearProps: 'clipPath', scrollTrigger: when(about) });
     }
     ['.svc-title', '.clients-head h2', '#process .sec-head h2', '.wk-head h2', '#faq h2'].forEach((sel) => {
       const el = $(sel);
       if (!el) return;
-      gsap.from(el, { scale: 1.3, opacity: 0.2, ease: 'none', transformOrigin: '50% 100%',
-        scrollTrigger: { trigger: el, start: 'top 95%', end: 'top 55%', scrub: true } });
+      gsap.from(el, { scale: 1.3, opacity: 0.2, duration: 0.8, ease: 'power3.out', transformOrigin: '50% 100%', scrollTrigger: when(el, 'top 92%') });
     });
     return () => { if (cleanupTouch) cleanupTouch(); };
   });
