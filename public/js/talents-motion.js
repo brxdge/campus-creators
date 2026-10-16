@@ -298,15 +298,20 @@
       gsap.to('#talHero .tal-hero-video', { scale: 1.15, ease: 'none',
         scrollTrigger: { trigger: '#talHero', start: 'top top', end: 'bottom top', scrub: true } });
     }
+    // Each effect plays ONCE, by time, when its piece scrolls into view, then
+    // clears itself. Tied to the finger they hung half-finished whenever
+    // scrolling paused (looks cut off / misaligned) and re-drew clipped areas on
+    // every scroll frame. clamp() keeps pieces near the very bottom of the page
+    // from waiting for a scroll position they can never reach.
+    const when = (trigger, start) => ({ trigger, start: 'clamp(' + start + ')', once: true });
     ['#tal-why .tw-head', '#tal-roster .tal-sec-head', '#tal-how .ts-head', '#tal-faq .tq-intro', '#tal-closer .tal-closer-main .wrap'].forEach((sel) => {
       const el = $(sel);
       if (!el) return;
-      gsap.from(el, { scale: 1.25, opacity: 0.2, ease: 'none', transformOrigin: '50% 100%',
-        scrollTrigger: { trigger: el, start: 'top 95%', end: 'top 55%', scrub: true } });
+      gsap.from(el, { scale: 1.25, opacity: 0.2, duration: 0.8, ease: 'power3.out', transformOrigin: '50% 100%', scrollTrigger: when(el, 'top 92%') });
     });
     $$('#tal-why .tw-row, #tal-how .ts-step, #tal-faq .tq-item').forEach((el) => {
-      gsap.fromTo(el, { clipPath: 'inset(0% 100% 0% 0%)' }, { clipPath: 'inset(-20% -20% -20% -20%)', ease: 'none',
-        scrollTrigger: { trigger: el, start: 'top 98%', end: 'top 70%', scrub: true } });
+      gsap.fromTo(el, { clipPath: 'inset(0% 100% 0% 0%)' },
+        { clipPath: 'inset(-20% -20% -20% -20%)', duration: 0.7, ease: 'power2.out', clearProps: 'clipPath', scrollTrigger: when(el, 'top 94%') });
     });
   });
 
