@@ -3406,3 +3406,23 @@ input,textarea{text-transform:none;}
 @media (max-width:900px){
   .process-video,.tal-closer-video{display:none !important;}
 }
+
+/* ---------- phones: one swipe = one section, using the phone's own snapping (v161) ----------
+   Same feel on Home and Talents. The phone does the snapping itself, so it
+   stays smooth (the earlier version drove the scroll from script). Every
+   section is about one screen tall; a section taller than the screen can
+   still be scrolled through before it snaps on. To switch this off, delete
+   this block. */
+@media (max-width:900px){
+  html{scroll-snap-type:y mandatory;}
+  /* body was clipping sideways overflow with "hidden", which turns it into its
+     own (non-scrolling) scroller and stops the sections snapping to the page.
+     "clip" hides the same overflow without that. Older phones that don't know
+     "clip" keep "hidden" and simply scroll freely. */
+  body{overflow-x:clip;}
+  /* while someone is typing in a form, let the page scroll freely so the
+     keyboard and the snapping don't fight each other */
+  html:has(input:focus,textarea:focus,select:focus){scroll-snap-type:none;}
+  #hero,#services,#clientsSection,#process,#sections > .band,#work,#about,#faq,#contact,
+  #talHero,#tal-why,#tal-roster,#tal-how,#tal-faq,#tal-closer{scroll-snap-align:start;scroll-snap-stop:always;}
+}
