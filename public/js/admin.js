@@ -77,7 +77,11 @@
   Object.keys(GROUPS).forEach((k) => { VIEWS[k] = GROUPS[k]; });
   VIEWS['inbox-brand'] = { title: 'Brand enquiries', crumb: 'Inbox', desc: 'Messages sent through the contact form on the Brands page.', inbox: 'brand' };
   VIEWS['inbox-talent'] = { title: 'Talent applications', crumb: 'Inbox', desc: 'Applications sent through the Apply form on the Talents page.', inbox: 'talent' };
-  VIEWS['discovered'] = { title: 'Discovered creators', crumb: 'Creators', desc: 'Creators you saved in Creator Search and sent to the website. Private: only visible here, never on the public site.', discovered: true };
+  // While this is true, the Discovered creators button opens a "Coming soon" page and the
+  // creator count next to it stays hidden. Nothing is deleted: the page, the data and the
+  // receiver are all still there. Change it to false to bring the page back.
+  const DISCOVERED_COMING_SOON = true;
+  VIEWS['discovered'] = { title: 'Discovered creators', crumb: 'Creators', desc: DISCOVERED_COMING_SOON ? '' : 'Creators you saved in Creator Search and sent to the website. Private: only visible here, never on the public site.', discovered: true };
 
   // readable labels + the order fields are shown in
   const FIELD_LABELS = {
@@ -236,7 +240,7 @@
     try {
       const [data] = await Promise.all([api('/api/admin/brands'), loadSubmissions(), loadRoster(), loadCases()]);
       brands = data.brands || [];
-      if (window.CCDiscovered) window.CCDiscovered.badge(api);
+      if (window.CCDiscovered && !DISCOVERED_COMING_SOON) window.CCDiscovered.badge(api);
       render();
     } catch (err) {
       view.innerHTML = '<p class="loading"></p>';
@@ -247,6 +251,7 @@
   function render() {
     view.innerHTML = '';
     if (VIEWS[current].discovered) {
+      if (DISCOVERED_COMING_SOON) { view.appendChild(el('div', 'notice', '<h3>Coming soon</h3>')); return; }
       if (window.CCDiscovered) window.CCDiscovered.render({ api, el, toast, view, rerender: render });
       else view.appendChild(el('p', 'loading', 'Discovered creators didn\u2019t load. Check js/admin-discovered.js is on the server.'));
       return;
