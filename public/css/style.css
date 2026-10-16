@@ -2024,7 +2024,7 @@ video.phone-media::-webkit-media-controls,
   .faq-intro h2{font-size:clamp(28px,9vw,38px);}
   .faq-intro p{font-size:13.5px;margin:8px 0 14px;}
   .faq-intro .btn{padding:11px 20px;}
-  .faq-item summary{padding:13px 0;font-size:14px;}
+  .faq-item summary{padding:13px 34px 13px 0;font-size:14px;}   /* keep room for the + so a long question never runs into it */
   .faq-body p{font-size:13.5px;}
 
   /* CONTACT + FOOTER */
@@ -3398,4 +3398,11 @@ input,textarea{text-transform:none;}
   .brands-body #about{padding-bottom:calc(78px + var(--bm-h) + var(--bm-gap) * 2) !important;}
   .brand-marquee{bottom:calc(78px + var(--bm-gap));}
   .bm-name{font-size:17px;padding:0 8px;}
+}
+
+/* ---------- phones: lighter backgrounds (v160) ----------
+   A blurred video behind a whole section is the heaviest thing a phone has to
+   draw while scrolling. On phones those sections keep their dark background. */
+@media (max-width:900px){
+  .process-video,.tal-closer-video{display:none !important;}
 }
