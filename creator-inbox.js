@@ -25,7 +25,10 @@
 // security rules block images from other websites, so when a creator arrives
 // with a photo link the website downloads its own private copy (only from
 // TikTok's image servers, small images only) and shows that in the admin. If
-// the link has already expired, the card simply shows initials. Each delivery
+// the link has already expired, the card simply shows initials. Creator Search can also
+// send the picture itself, inside the delivery, as text ("picture": "data:image/jpeg;base64,..."):
+// its own saved copy, which never expires. The website checks the bytes really are a small
+// jpg, png or webp, and keeps its own private copy the same way. Each delivery
 // also records how many picture links came with it and how many were saved,
 // so the admin can say why pictures are missing instead of leaving it a mystery.
 //
@@ -56,7 +59,7 @@ const crypto = require('crypto');
 const RECEIVE_PATH = '/api/creator-search';
 const HANDLE_RE = /^[A-Za-z0-9._]{1,40}$/;
 const RESERVED = /^(__proto__|constructor|prototype|hasownproperty|tostring|valueof)$/i;
-const MAX_BODY = '2mb';
+const MAX_BODY = '16mb';                              // a delivery can carry the creators' pictures as text, so this is larger than the list alone needs
 const MAX_AVATAR = 1.5 * 1024 * 1024;                 // bytes
 const AVATAR_TIMEOUT_MS = 7000;
 const AVATAR_PARALLEL = 4;
@@ -159,6 +162,16 @@ function imageUrl(v) {
 }
 // host + path, without the changing signature, to tell "same photo" from "new photo"
 function photoKey(href) { try { const u = new URL(href); return u.host + u.pathname; } catch (e) { return ''; } }
+// A picture sent inside the delivery as text: "data:image/jpeg;base64,...". Returns the bytes, or undefined if it is anything else
+// or too big. (The bytes are checked again, by sniffImage, when the copy is saved.)
+function imageData(v) {
+  if (typeof v !== 'string' || v.length > Math.ceil(MAX_AVATAR / 3) * 4 + 64) return undefined;
+  const m = /^data:image\/(?:jpe?g|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(v.trim());
+  if (!m) return undefined;
+  const buf = Buffer.from(m[1], 'base64');
+  return buf.length > 12 && buf.length <= MAX_AVATAR ? buf : undefined;
+}
+const dataKey = (buf) => 'sent:' + crypto.createHash('sha1').update(buf).digest('hex').slice(0, 16);     // tells "same picture" from "new picture" without a link
 function sniffImage(b) {
   if (b.length > 12 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'jpg';
   if (b.length > 12 && b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG') return 'png';
@@ -265,9 +278,11 @@ function normalise(raw, fallbackCollection) {
   if (since) out.tiktokSince = since;
   const mail = cleanEmail(pick(m, ['email', 'emailaddress', 'contactemail', 'businessemail', 'bioemail', 'publicemail', 'publicemailaddress']));
   if (mail) out.emailSent = mail;
-  const photo = imageUrl(pick(m, ['avatar', 'avatarurl', 'avatarlarger', 'avatarmedium', 'avatarthumb', 'originalavatarurl',
-    'profilepicture', 'profileimage', 'profilepic', 'picture', 'photo', 'image']));
+  const rawPhoto = pick(m, ['avatar', 'avatarurl', 'avatarlarger', 'avatarmedium', 'avatarthumb', 'originalavatarurl',
+    'profilepicture', 'profileimage', 'profilepic', 'picture', 'photo', 'image']);
+  const photo = imageUrl(rawPhoto);
   if (photo) out.avatarSrc = photo;                    // used once to download a copy, never stored
+  else { const data = imageData(rawPhoto); if (data) out.avatarData = data; }      // a picture sent inside the delivery: saved once, never stored in the list
   const own = collectionNames(pick(m, COLLECTION_KEYS));
   out.collections = own.length ? own : fallbackCollection;
   return out;
@@ -350,13 +365,27 @@ module.exports = function creatorInbox(opts = {}) {
     if (it) {
       if (savedName) {
         if (it.avatarFile && it.avatarFile !== savedName) unlinkPhoto(it.avatarFile);
-        it.avatarFile = savedName; it.avatarKey = photoKey(job.src); it.avatarAt = Date.now(); delete it.photoError;
+        it.avatarFile = savedName; it.avatarKey = job.key || photoKey(job.src); it.avatarAt = Date.now(); delete it.photoError;
       } else it.photoError = reason;
     } else if (savedName) unlinkPhoto(savedName);                // the creator was deleted meanwhile
     if (it || d) write(st);
   }
 
+  // a picture that came inside the delivery: nothing to download, only to check and keep
+  function savePhotoData(job) {
+    try {
+      const ext = sniffImage(job.data);                           // the bytes decide, not what the text said
+      if (!ext) return photoResult(job, null, 'what was sent as a picture was not a picture');
+      fs.mkdirSync(avatarDir, { recursive: true });
+      const name = job.id + '.' + ext;
+      fs.writeFileSync(path.join(avatarDir, name + '.tmp'), job.data);
+      fs.renameSync(path.join(avatarDir, name + '.tmp'), path.join(avatarDir, name));
+      photoResult(job, name, '');
+    } catch (e) { photoResult(job, null, 'the website could not save the picture'); }
+  }
+
   async function fetchPhoto(job) {
+    if (job.data) return savePhotoData(job);
     if (typeof fetch !== 'function') return photoResult(job, null, 'this server cannot download pictures');
     let u;
     try { u = new URL(job.src); } catch (e) { return photoResult(job, null, 'the picture link is not a web address'); }
@@ -504,15 +533,15 @@ module.exports = function creatorInbox(opts = {}) {
       for (const n of people) {
         const key = n.handle.toLowerCase();
         const ex = byHandle.get(key);
-        const photoSrc = n.avatarSrc;
-        delete n.avatarSrc;
+        const photoNow = n.avatarSrc ? { src: n.avatarSrc, key: photoKey(n.avatarSrc) } : n.avatarData ? { data: n.avatarData, key: dataKey(n.avatarData) } : null;
+        delete n.avatarSrc; delete n.avatarData;
         if (ex) {
           for (const k of ['nickname', 'bio', 'bioLink', 'followers', 'following', 'videos', 'likes', 'verified',
             'business', 'private', 'seller', 'businessCategory', 'tiktokSince', 'emailSent']) if (n[k] !== undefined) ex[k] = n[k];
           ex.collections = (ex.collections || []).concat(n.collections.filter((c) => !(ex.collections || []).includes(c))).slice(0, MAX_COLLECTIONS);
           ex.updatedAt = now;
           ex.deliveries = (ex.deliveries || 1) + 1;
-          if (photoSrc && (ex.avatarKey !== photoKey(photoSrc) || !ex.avatarFile)) photoJobs.push({ id: ex.id, src: photoSrc, at: now });
+          if (photoNow && (ex.avatarKey !== photoNow.key || !ex.avatarFile)) photoJobs.push(Object.assign({ id: ex.id, at: now }, photoNow));
           updated += 1;
         } else if (store.items.length >= MAX_STORED) {
           full += 1;
@@ -525,7 +554,7 @@ module.exports = function creatorInbox(opts = {}) {
           store.nextId += 1;
           store.items.push(item);
           byHandle.set(key, item);
-          if (photoSrc) photoJobs.push({ id: item.id, src: photoSrc, at: now });
+          if (photoNow) photoJobs.push(Object.assign({ id: item.id, at: now }, photoNow));
           added += 1;
         }
       }
