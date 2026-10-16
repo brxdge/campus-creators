@@ -428,6 +428,9 @@
     const video = document.getElementById('talCloserVideo');
     const section = document.getElementById('tal-closer');
     if (!video || !section) return;
+    // phones: a full-section blurred video is the heaviest thing to draw on a
+    // phone, so it stays off there (the section keeps its dark background)
+    if (window.matchMedia('(max-width: 900px)').matches) return;
     function assign() {
       // footer backdrop: the Twisted Tea campaign clip (matched loosely, so
       // "Twisted Tea", "TwistedTea" or "Twisted Tea Canada" all work);
