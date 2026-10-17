@@ -58,6 +58,17 @@
 
       ],
     },
+    why: {
+      title: 'Why Join', crumb: 'Talents page',
+      desc: 'One video per card. It plays while someone hovers the card, on a computer. Phones and tablets keep the icon. A photo in the same slot is used as the first frame. Short clips (5 to 10 seconds, under 3 MB) load fastest.',
+      ratio: '3/4',
+      slots: [
+        ['slot-why-1', 'Get paid to post'],
+        ['slot-why-2', 'Get free stuff'],
+        ['slot-why-3', 'Be creative'],
+        ['slot-why-4', 'Build your campus crew'],
+      ],
+    },
     roster: {
       title: 'Campus Ambassadors', crumb: 'Talents page',
       desc: 'Add, edit or remove ambassadors, and give each one a photo or video. Videos play on hover; a photo in the same card is used as the cover. 12 fits best on phones (3 \u00d7 4 grid).',
