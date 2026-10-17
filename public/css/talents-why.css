@@ -172,6 +172,19 @@
   
 }
 
+/* ============ optional hover video (uploaded in the admin: Talents page > Why Join) ============
+   talents-why.js adds a .tw-media layer to a panel only when that panel has a video, and only
+   on a computer with a mouse, so panels without one (and every phone) look exactly as before.
+   The red flood runs first, then the clip fades in over it. */
+#tal-why .tw-media{position:absolute;inset:0;z-index:0;opacity:0;pointer-events:none;transition:opacity .5s ease .2s;}
+#tal-why .tw-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#18181a;}
+/* keeps the number, the + and the words readable over the picture */
+#tal-why .tw-media::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.34) 0%,rgba(0,0,0,0) 32%,rgba(0,0,0,.76) 100%);}
+#tal-why .tw-row.has-clip .tw-art{transition:transform .85s var(--tw-ease),right .85s var(--tw-ease),color .4s ease,opacity .4s ease;}
+#tal-why .tw-row.has-clip.is-playing .tw-media{opacity:1;}
+#tal-why .tw-row.has-clip.is-playing .tw-art{opacity:0;}
+@media (max-width:900px){ #tal-why .tw-media{display:none;} }
+
 @media (prefers-reduced-motion: reduce){
   #tal-why .tw-row,#tal-why .tw-row *,#tal-why .tw-row::before,#tal-why .tw-row::after{transition:none !important;animation:none !important;}
 }
