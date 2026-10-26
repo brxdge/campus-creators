@@ -206,6 +206,8 @@
     viewDesc.textContent = v.desc;
     app.classList.remove('side-open');
     load();
+    // pages that have a guided tour get the "Take a tour" button (admin-tour.js)
+    if (window.CCTour) window.CCTour.viewChanged(VIEWS[current].discovered && DISCOVERED_COMING_SOON ? '' : current);
   }
   window.addEventListener('hashchange', route);
 
