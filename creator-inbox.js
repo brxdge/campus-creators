@@ -58,6 +58,10 @@ const crypto = require('crypto');
 
 const RECEIVE_PATH = '/api/creator-search';
 const HANDLE_RE = /^[A-Za-z0-9._]{1,40}$/;
+// a YouTube channel: its @name may also hold hyphens and be longer; its id is always UC + 22 characters
+const YT_HANDLE_RE = /^[A-Za-z0-9._-]{1,100}$/;
+const YT_CHANNEL_ID_RE = /^UC[\w-]{22}$/;
+const YT_URL_RE = /^https:\/\/(?:www\.)?youtube\.com\/(?:channel\/UC[\w-]{22}|@[A-Za-z0-9._-]{1,100})\/?$/i;
 const RESERVED = /^(__proto__|constructor|prototype|hasownproperty|tostring|valueof)$/i;
 const MAX_BODY = '16mb';                              // a delivery can carry the creators' pictures as text, so this is larger than the list alone needs
 const MAX_AVATAR = 1.5 * 1024 * 1024;                 // bytes
@@ -232,7 +236,7 @@ function extract(body, inherited, depth) {
   return looksLikeCreator(m) ? [{ raw: body, collection: here }] : [];
 }
 function looksLikeCreator(m) {
-  return ['handle', 'username', 'uniqueid', 'tiktoklink', 'tiktokurl', 'profileurl'].some((k) => !isEmpty(m.get(k)));
+  return ['handle', 'username', 'uniqueid', 'tiktoklink', 'tiktokurl', 'profileurl', 'channelid'].some((k) => !isEmpty(m.get(k)));
 }
 
 function normalise(raw, fallbackCollection) {
@@ -241,6 +245,11 @@ function normalise(raw, fallbackCollection) {
     const inner = keyed(m.get(sub));
     for (const [k, v] of inner) if (!m.has(k) || isEmpty(m.get(k))) m.set(k, v);
   }
+  // a YouTube channel (Creator Search says platform "youtube" and sends the channel id); everything else is a TikTok creator, as before
+  const channelId = oneLine(pick(m, ['channelid']), 40);
+  const sentUrl = String(pick(m, ['url', 'link', 'profileurl']) || '').trim();
+  const isYt = String(pick(m, ['platform', 'network']) || '').toLowerCase() === 'youtube' || YT_CHANNEL_ID_RE.test(channelId) || YT_URL_RE.test(sentUrl);
+  if (isYt) return normaliseYt(m, { channelId, sentUrl }, fallbackCollection);
   let handle = oneLine(pick(m, ['handle', 'username', 'uniqueid', 'tiktokhandle', 'tiktokusername', 'user']), 60).replace(/^@/, '');
   if (!HANDLE_RE.test(handle)) {
     handle = '';
@@ -253,7 +262,23 @@ function normalise(raw, fallbackCollection) {
     handle = HANDLE_RE.test(nm) ? nm : '';
   }
   if (!handle || RESERVED.test(handle)) return null;
-  const out = { handle };
+  return details(m, { handle }, fallbackCollection);
+}
+// a YouTube channel in the same shape. handle is the channel's @name (without the @) or, when it has none or an unusual one, its id.
+function normaliseYt(m, { channelId, sentUrl }, fallbackCollection) {
+  let handle = oneLine(pick(m, ['handle', 'username', 'uniqueid', 'user']), 100).replace(/^@/, '');
+  if (!YT_HANDLE_RE.test(handle)) handle = YT_CHANNEL_ID_RE.test(channelId) ? channelId : '';
+  if (!handle || RESERVED.test(handle)) return null;
+  const out = { handle, platform: 'youtube' };
+  if (YT_CHANNEL_ID_RE.test(channelId)) out.channelId = channelId;
+  out.url = YT_URL_RE.test(sentUrl) ? sentUrl : out.channelId ? 'https://www.youtube.com/channel/' + out.channelId : 'https://www.youtube.com/@' + handle;
+  const country = String(pick(m, ['country', 'countrycode']) || '').trim().toUpperCase();
+  if (/^[A-Z]{2}$/.test(country)) out.country = country;
+  return details(m, out, fallbackCollection);
+}
+// the details both kinds share (name, bio, numbers, picture, collections); `out` already holds who it is
+function details(m, out, fallbackCollection) {
+  const handle = out.handle;
   const nick = oneLine(pick(m, ['nickname', 'displayname', 'fullname', 'creatorname', 'name']), 80);
   out.nickname = nick || handle;
   const bio = pick(m, ['bio', 'signature', 'description', 'about', 'biography']);
@@ -529,15 +554,16 @@ module.exports = function creatorInbox(opts = {}) {
     let added = 0, updated = 0, full = 0;
     const photoJobs = [];
     if (!isTest) {
-      const byHandle = new Map(store.items.map((i) => [String(i.handle).toLowerCase(), i]));
+      const keyOf = (i) => (i.platform === 'youtube' ? 'yt:' + String(i.channelId || i.handle).toLowerCase() : String(i.handle).toLowerCase());     // a YouTube channel and a TikTok creator with the same name are two people
+      const byHandle = new Map(store.items.map((i) => [keyOf(i), i]));
       for (const n of people) {
-        const key = n.handle.toLowerCase();
+        const key = keyOf(n);
         const ex = byHandle.get(key);
         const photoNow = n.avatarSrc ? { src: n.avatarSrc, key: photoKey(n.avatarSrc) } : n.avatarData ? { data: n.avatarData, key: dataKey(n.avatarData) } : null;
         delete n.avatarSrc; delete n.avatarData;
         if (ex) {
           for (const k of ['nickname', 'bio', 'bioLink', 'followers', 'following', 'videos', 'likes', 'verified',
-            'business', 'private', 'seller', 'businessCategory', 'tiktokSince', 'emailSent']) if (n[k] !== undefined) ex[k] = n[k];
+            'business', 'private', 'seller', 'businessCategory', 'tiktokSince', 'emailSent', 'country']) if (n[k] !== undefined) ex[k] = n[k];
           ex.collections = (ex.collections || []).concat(n.collections.filter((c) => !(ex.collections || []).includes(c))).slice(0, MAX_COLLECTIONS);
           ex.updatedAt = now;
           ex.deliveries = (ex.deliveries || 1) + 1;
@@ -547,7 +573,7 @@ module.exports = function creatorInbox(opts = {}) {
           full += 1;
         } else {
           const item = Object.assign({
-            id: store.nextId, url: 'https://www.tiktok.com/@' + n.handle,
+            id: store.nextId, url: n.platform === 'youtube' ? n.url : 'https://www.tiktok.com/@' + n.handle,
             bio: '', bioLink: null, followers: null, following: null, videos: null, likes: null,
             verified: false, business: false, private: false, seller: false, businessCategory: '', tiktokSince: '',
           }, n, { collections: n.collections.slice(0, MAX_COLLECTIONS), receivedAt: now, updatedAt: now, deliveries: 1, seen: false });
