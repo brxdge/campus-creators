@@ -404,7 +404,7 @@
     ui.scrim.classList.add('open');
     if (prev && prev !== id) { const p = byId(prev); if (p) refreshRow(p); }
     refreshRow(c);
-    if (!c.seen) setSeen(c, true);
+    if (!c.seen && !(opts && opts.peek)) setSeen(c, true);
     if (!same && !(opts && (opts.focusEmail || opts.keepFocus))) { const x = ui.panel.querySelector('.dc-panel-x'); if (x) x.focus({ preventScroll: true }); }
   }
   // previous (-1) or next (+1) creator in the list the panel was opened from
@@ -1239,9 +1239,55 @@
     }
   }
 
+  // Show-only helpers for the admin tour (admin-tour.js). They never change anything that is
+  // saved: the preview panel does not mark a creator as seen, nothing is sent, and the ticks
+  // are put back the way they were.
+  let tourPicks = null;
+  const tour = {
+    hasEmail() { return !!(data && ui.list && visible().some((c) => c.email)); },
+    openPanel() {
+      if (!data || !ui.list) return false;
+      const list = visible();
+      const c = list.find((x) => x.email) || list[0];
+      if (!c) return false;
+      openPanel(c.id, { peek: true });
+      return true;
+    },
+    closePanel() { if (openId) closePanel(true); },
+    openComposer() {
+      if (!data || !ui.list) return false;
+      const c = visible().find((x) => x.email);
+      if (!c) return false;
+      openComposer([c], 0);
+      return !!composer;
+    },
+    closeComposer() { closeComposer(true); },
+    pick(n) {
+      if (!data || !ui.list) return false;
+      const list = visible();
+      const withMail = list.filter((c) => c.email).slice(0, n);
+      const chosen = withMail.length ? withMail : list.slice(0, n);
+      if (!chosen.length) return false;
+      if (!tourPicks) tourPicks = new Set(selected);
+      chosen.forEach((c) => selected.add(c.id));
+      syncPicks();
+      syncBulk();
+      return true;
+    },
+    unpick() {
+      if (!tourPicks) return;
+      selected.clear();
+      tourPicks.forEach((id) => selected.add(id));
+      tourPicks = null;
+      syncPicks();
+      syncBulk();
+    },
+  };
+
   document.addEventListener('keydown', onKey);
   window.CCDiscovered = {
     render(helpers) { H = helpers; shown = PAGE; load(); },
     badge,
+    tour,
   };
 })();
