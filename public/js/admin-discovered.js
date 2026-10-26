@@ -14,14 +14,18 @@
 // ============================================================
 (function () {
   'use strict';
-  const PAGE = 30;
+  const PAGE = 40;
   const VIEW_KEY = 'cc-dc-view';
   let data = null;                 // last response from /api/admin/discovered
   let filter = 'all';              // all | new | email | emailed
   let collection = '';             // '' = every collection
   let sort = 'newest';             // newest | followers | name
   let query = '';
-  let shown = PAGE;
+  let shown = PAGE;                // how many rows the list is asked to show
+  let rowsNow = [];                // the filtered, sorted creators behind the list
+  let rendered = 0;                // how many of rowsNow are on screen
+  let watcher = null;              // loads the next batch when the bottom of the list comes into view
+  let navIds = [];                 // creators the side panel's previous / next buttons walk through
   let mode = 'list';               // list | cards
   let H = null;
   let ui = {};                     // the elements of the current screen
@@ -53,6 +57,9 @@
     copy: svg('<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/>', 15),
     spark: svg('<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.7 5.5-4.7s4.9 1.7 5.5 4.7"/><path d="M17 8.5v5M14.5 11h5"/>', 26, 1.8),
     info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>', 16),
+    prev: svg('<path d="m15 5-7 7 7 7"/>', 16, 2.4),
+    next: svg('<path d="m9 5 7 7-7 7"/>', 16, 2.4),
+    refresh: svg('<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>', 14, 2.2),
     send: svg('<path d="M21 3 10.5 13.5"/><path d="M21 3l-6.5 18-4-7.5L3 9.5 21 3Z"/>', 15),
   };
   const isNum = (n) => typeof n === 'number' && Number.isFinite(n);
@@ -301,7 +308,7 @@
     sub.appendChild(fol);
     sub.appendChild(emailChip(c));
     const st = statusChip(c);
-    sub.appendChild(st || node('span', 'dc-st dc-st-empty'));
+    sub.appendChild(st || (c.email ? node('span', 'dc-st dc-st-none', 'Not emailed') : node('span', 'dc-st dc-st-empty')));
     el.appendChild(sub);
 
     const acts = node('div', 'dc-acts');
@@ -371,27 +378,46 @@
     const c = byId(id);
     if (!c) return;
     ensurePanel();
-    const same = openId === id && ui.panel.classList.contains('open');
-    if (!same && !ui.panel.classList.contains('open')) {
+    const wasOpen = ui.panel.classList.contains('open');
+    const same = openId === id && wasOpen;
+    if (!wasOpen) {
       // remember where to come back to; the row itself gets rebuilt, so note which creator and which control
       const a = document.activeElement;
       const holder = a && a.closest ? a.closest('[data-id]') : null;
       panelReturn = holder ? { id: holder.dataset.id, cls: String(a.className || '').split(' ')[0] || 'dc-open' } : { el: a };
+      // the order the previous / next buttons follow. Fixed now, so a creator that just
+      // turned "seen" doesn't vanish from a "New" list halfway through.
+      navIds = visible().map((x) => x.id);
+      if (!navIds.includes(id)) navIds.push(id);
     }
     const prev = openId;
     openId = id;
     renderPanel(opts);
+    if (prev && prev !== id) ui.panel.scrollTop = 0;
     ui.panel.classList.add('open');
     ui.scrim.classList.add('open');
     if (prev && prev !== id) { const p = byId(prev); if (p) refreshRow(p); }
     refreshRow(c);
     if (!c.seen) setSeen(c, true);
-    if (!same && !(opts && opts.focusEmail)) { const x = ui.panel.querySelector('.dc-panel-x'); if (x) x.focus({ preventScroll: true }); }
+    if (!same && !(opts && (opts.focusEmail || opts.keepFocus))) { const x = ui.panel.querySelector('.dc-panel-x'); if (x) x.focus({ preventScroll: true }); }
+  }
+  // previous (-1) or next (+1) creator in the list the panel was opened from
+  function step(dir) {
+    if (!ui.panel || !ui.panel.classList.contains('open')) return;
+    const i = navIds.indexOf(openId);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= navIds.length) return;
+    showUpTo(j + 1);
+    openPanel(navIds[j], { keepFocus: true });
+    if (!ui.panel.contains(document.activeElement)) ui.panel.focus({ preventScroll: true });
+    const r = ui.list && ui.list.querySelector('[data-id="' + navIds[j] + '"]');
+    if (r && r.scrollIntoView) r.scrollIntoView({ block: 'nearest' });
   }
   function closePanel(silent) {
     if (!ui.panel) return;
     const id = openId;
     openId = null;
+    navIds = [];
     ui.panel.classList.remove('open');
     ui.scrim.classList.remove('open');
     const c = id ? byId(id) : null;
@@ -468,6 +494,20 @@
     const x = btn('dc-panel-x', ICON.close, 'Close');
     x.addEventListener('click', () => closePanel());
     head.appendChild(x);
+    const pos = navIds.indexOf(c.id);
+    if (navIds.length > 1 && pos >= 0) {
+      const nav = node('div', 'dc-panel-nav');
+      const back = btn('dc-nav dc-nav-prev', ICON.prev, 'Previous creator');
+      back.title = 'Previous creator (left arrow key)';
+      back.disabled = pos === 0;
+      back.addEventListener('click', () => step(-1));
+      const fwd = btn('dc-nav dc-nav-next', ICON.next, 'Next creator');
+      fwd.title = 'Next creator (right arrow key)';
+      fwd.disabled = pos === navIds.length - 1;
+      fwd.addEventListener('click', () => step(1));
+      nav.append(back, fwd, node('span', 'dc-nav-pos', (pos + 1) + ' of ' + navIds.length));
+      head.appendChild(nav);
+    }
     const id = node('div', 'dc-panel-id');
     id.appendChild(avatar(c, 'xl'));
     const nm = node('div', 'dc-panel-nm');
@@ -773,12 +813,23 @@
   }
 
   // ---------- the page ----------
+  // What was typed in the search box, as separate words. "@nia", a pasted TikTok link and
+  // "nia ahn" all work; every word has to be found somewhere on the creator.
+  function searchWords(q) {
+    let t = String(q || '').trim().toLowerCase();
+    const link = t.match(/tiktok\.com\/@([^\s/?#]+)/);
+    if (link) t = link[1];
+    return t.split(/\s+/).map((w) => w.replace(/^@+/, '')).filter(Boolean);
+  }
   function visible() {
-    const q = query.trim().toLowerCase();
-    let rows = data.items.filter((c) =>
-      (filter === 'all' || (filter === 'new' && !c.seen) || (filter === 'email' && c.email) || (filter === 'emailed' && c.contactedAt)) &&
-      (!collection || (c.collections || []).includes(collection)) &&
-      (!q || (c.handle + ' ' + (c.nickname || '') + ' ' + (c.bio || '') + ' ' + (c.email || '') + ' ' + (c.collections || []).join(' ') + ' ' + (c.businessCategory || '')).toLowerCase().includes(q)));
+    const words = searchWords(query);
+    let rows = data.items.filter((c) => {
+      if (!(filter === 'all' || (filter === 'new' && !c.seen) || (filter === 'email' && c.email) || (filter === 'emailed' && c.contactedAt))) return false;
+      if (collection && !(c.collections || []).includes(collection)) return false;
+      if (!words.length) return true;
+      const hay = (c.handle + ' ' + (c.nickname || '') + ' ' + (c.bio || '') + ' ' + (c.email || '') + ' ' + (c.collections || []).join(' ') + ' ' + (c.businessCategory || '')).toLowerCase();
+      return words.every((w) => hay.includes(w));
+    });
     if (sort === 'followers') rows = rows.slice().sort((a, b) => (b.followers || 0) - (a.followers || 0));
     else if (sort === 'name') rows = rows.slice().sort((a, b) => displayName(a).localeCompare(displayName(b), undefined, { sensitivity: 'base' }));
     return rows;
@@ -796,11 +847,32 @@
     setBadge(n.new);
     syncBulk();
   }
+  const idOf = (el) => { const n = Number(el.dataset.id); return Number.isFinite(n) ? n : el.dataset.id; };
+  const allPicked = () => rowsNow.length > 0 && rowsNow.every((c) => selected.has(c.id));
+  // after the selection changed somewhere else: bring every row on screen in line with it
+  function syncPicks() {
+    if (!ui.list) return;
+    ui.list.querySelectorAll('.dc-row,.dc-card').forEach((el) => {
+      const on = selected.has(idOf(el));
+      el.classList.toggle('is-picked', on);
+      const box = el.querySelector('.dc-check input');
+      if (box) box.checked = on;
+    });
+  }
   function syncBulk() {
     if (!ui.bulk) return;
     const n = selected.size;
+    if (ui.headBox && ui.headBox.isConnected) {
+      const all = allPicked();
+      ui.headBox.checked = all;
+      ui.headBox.indeterminate = !all && rowsNow.some((c) => selected.has(c.id));
+    }
+    if (ui.bulkAll) {
+      ui.bulkAll.hidden = allPicked();
+      ui.bulkAll.textContent = 'Select all ' + rowsNow.length;
+    }
     ui.bulk.hidden = !n;
-    ui.bulkCount.textContent = n + (n === 1 ? ' selected' : ' selected');
+    ui.bulkCount.textContent = n + ' selected';
     const withMail = data.items.filter((c) => selected.has(c.id) && c.email);
     ui.bulkMail.hidden = !n;
     ui.bulkMail.disabled = !withMail.length;
@@ -822,18 +894,34 @@
     }
     const last = (data.deliveries || []).find((d) => !d.test) || (data.deliveries || [])[0];
     const p = node('p', 'dc-last');
+    const txt = node('span', 'dc-last-text');
     if (!last) {
-      p.textContent = 'Connected. Nothing has arrived yet. In Creator Search, open Automations and choose Run now.';
+      txt.textContent = 'Connected. Nothing has arrived yet. In Creator Search, open Automations and choose Run now.';
     } else if (last.test) {
-      p.textContent = 'Connected. Last message from Creator Search was a test, ' + ago(last.at) + '.';
+      txt.textContent = 'Connected. Last message from Creator Search was a test, ' + ago(last.at) + '.';
     } else if (!last.received) {
-      p.textContent = 'Connected. Creator Search last checked in ' + ago(last.at) + ' and had nothing new to send.';
+      txt.textContent = 'Connected. Creator Search last checked in ' + ago(last.at) + ' and had nothing new to send.';
     } else {
       const bits = [last.received + (last.received === 1 ? ' creator' : ' creators')];
       if (last.added) bits.push(last.added + ' new');
       if (last.updated) bits.push(last.updated + ' updated');
-      p.textContent = 'Connected. Last delivery ' + ago(last.at) + ': ' + bits.join(', ') + (last.collection ? ' from “' + last.collection + '”' : '') + '.';
+      txt.textContent = 'Connected. Last delivery ' + ago(last.at) + ': ' + bits.join(', ') + (last.collection ? ' from “' + last.collection + '”' : '') + '.';
     }
+    p.appendChild(txt);
+    // the list is loaded once when the page opens; this fetches it again without leaving the page
+    const rf = btn('dc-textbtn dc-refresh', ICON.refresh + '<span>Refresh</span>');
+    rf.title = 'Check for creators that arrived since this page opened';
+    rf.addEventListener('click', async () => {
+      const before = data.items.length;
+      rf.disabled = true;
+      rf.querySelector('span').textContent = 'Refreshing…';
+      const ok = await load(true);
+      if (ok) {
+        const more = data.items.length - before;
+        H.toast(more > 0 ? more + (more === 1 ? ' new creator.' : ' new creators.') : 'Up to date.');
+      } else if (rf.isConnected) { rf.disabled = false; rf.querySelector('span').textContent = 'Refresh'; }
+    });
+    p.appendChild(rf);
     ui.status.appendChild(p);
   }
 
@@ -875,12 +963,14 @@
   }
 
   function draw() {
-    const rows = visible();
+    rowsNow = visible();
+    rendered = 0;
+    ui.headBox = null;
     ui.list.innerHTML = '';
     ui.list.className = 'dc-list dc-list-' + mode;
     ui.list.removeAttribute('role');
-    ui.listWrap.classList.toggle('dc-panelbox', mode === 'list' && rows.length > 0);
-    if (!rows.length) {
+    ui.listWrap.classList.toggle('dc-panelbox', mode === 'list' && rowsNow.length > 0);
+    if (!rowsNow.length) {
       const empty = node('div', 'dc-empty');
       const none = !data.items.length;
       const noFilter = !query && !collection;
@@ -895,23 +985,56 @@
       ui.list.className = 'dc-list dc-list-empty';
       ui.list.appendChild(empty);
       ui.more.innerHTML = '';
+      syncBulk();
       return;
     }
     if (mode === 'list') {
+      // column titles (wide screens only); the tick box here selects every creator in the list
       const th = node('div', 'dc-thead');
-      th.setAttribute('aria-hidden', 'true');
-      th.innerHTML = '<span></span><span></span><span>Creator</span><span>Followers</span><span>Email</span><span>Status</span><span></span>';
+      const lab = node('label', 'dc-check');
+      lab.title = 'Select all ' + rowsNow.length;
+      const box = node('input');
+      box.type = 'checkbox';
+      box.setAttribute('aria-label', 'Select all ' + rowsNow.length + ' creators in this list');
+      box.addEventListener('change', () => {
+        if (box.checked) rowsNow.forEach((c) => selected.add(c.id)); else rowsNow.forEach((c) => selected.delete(c.id));
+        syncPicks();
+        syncBulk();
+      });
+      lab.appendChild(box);
+      ui.headBox = box;
+      th.appendChild(lab);
+      ['', 'Creator', 'Followers', 'Email', 'Status', ''].forEach((t) => { const c = node('span', null, t); c.setAttribute('aria-hidden', 'true'); th.appendChild(c); });
       ui.list.appendChild(th);
     }
-    rows.slice(0, shown).forEach((c) => ui.list.appendChild(build(c)));
+    appendRows();
+    syncBulk();
+  }
+
+  // The list grows a batch at a time. The next batch loads by itself when the bottom of the
+  // list scrolls into view, so 600 creators don't mean 20 clicks; the button is the fallback.
+  function showUpTo(n) {
+    if (n > shown) shown = n;
+    appendRows();
+  }
+  function appendRows() {
+    const upto = Math.min(Math.max(shown, PAGE), rowsNow.length);
+    const frag = document.createDocumentFragment();
+    for (; rendered < upto; rendered++) frag.appendChild(build(rowsNow[rendered]));
+    ui.list.appendChild(frag);
+    paintMore();
+  }
+  function paintMore() {
     ui.more.innerHTML = '';
-    const left = rows.length - shown;
-    ui.more.appendChild(node('span', 'dc-count', 'Showing ' + Math.min(shown, rows.length) + ' of ' + rows.length));
+    const left = rowsNow.length - rendered;
+    ui.more.appendChild(node('span', 'dc-count', 'Showing ' + rendered + ' of ' + rowsNow.length));
     if (left > 0) {
       const b = node('button', 'btn ghost small', 'Show ' + Math.min(PAGE, left) + ' more');
       b.type = 'button';
-      b.addEventListener('click', () => { shown += PAGE; draw(); });
+      b.addEventListener('click', () => showUpTo(rendered + PAGE));
       ui.more.appendChild(b);
+      // look again: if the bottom is still in view, the observer reports it and loads the next batch
+      if (watcher) { watcher.unobserve(ui.more); watcher.observe(ui.more); }
     }
   }
 
@@ -919,7 +1042,8 @@
     const view = H.view;
     view.innerHTML = '';
     view.classList.add('dc-view');
-    openId = null; composer = null;
+    openId = null; composer = null; navIds = [];
+    if (watcher) { watcher.disconnect(); watcher = null; }
     ui = { status: node('div', 'dc-status') };
     view.appendChild(ui.status);
     statusLine();
@@ -956,6 +1080,8 @@
     ui.seenAll.type = 'button';
     ui.seenAll.hidden = !n.new;
     ui.seenAll.addEventListener('click', async () => {
+      const left = data.items.filter((c) => !c.seen).length;
+      if (!confirm('Mark all ' + left + (left === 1 ? ' new creator' : ' new creators') + ' as seen? The “New” marks go away.')) return;
       try {
         const r = await api('/api/admin/discovered/seen', { all: true });
         data.items.forEach((c) => { c.seen = true; });
@@ -1013,7 +1139,7 @@
     sortSel.setAttribute('aria-label', 'Sort');
     sortSel.innerHTML = '<option value="newest">Newest first</option><option value="followers">Most followers</option><option value="name">Name A to Z</option>';
     sortSel.value = sort;
-    sortSel.addEventListener('change', () => { sort = sortSel.value; draw(); });
+    sortSel.addEventListener('change', () => { sort = sortSel.value; shown = PAGE; draw(); });
     bar.appendChild(sortSel);
     view.appendChild(bar);
 
@@ -1023,21 +1149,28 @@
     view.appendChild(ui.listWrap);
     ui.more = node('div', 'dc-morebar');
     view.appendChild(ui.more);
+    if ('IntersectionObserver' in window) {
+      watcher = new IntersectionObserver((hits) => {
+        if (hits.some((h) => h.isIntersecting) && rendered < rowsNow.length) showUpTo(rendered + PAGE);
+      }, { rootMargin: '0px 0px 500px 0px' });
+    }
 
     // floating bar that appears when something is selected
     ui.bulk = node('div', 'dc-bulk');
     ui.bulk.hidden = true;
-    ui.bulk.innerHTML = '<div class="dc-bulk-in" role="region" aria-label="Selected creators"><span class="dc-bulk-count"></span>' +
-      '<button type="button" class="btn small dc-bulk-mail"></button>' +
+    ui.bulk.innerHTML = '<div class="dc-bulk-in" role="region" aria-label="Selected creators">' +
+      '<div class="dc-bulk-top"><span class="dc-bulk-count"></span><button type="button" class="btn small dc-bulk-mail"></button></div>' +
+      '<div class="dc-bulk-links">' +
       '<button type="button" class="dc-bulk-link" data-a="seen">Mark seen</button>' +
-      '<button type="button" class="dc-bulk-link" data-a="all">Select all shown</button>' +
+      '<button type="button" class="dc-bulk-link" data-a="all"></button>' +
       '<button type="button" class="dc-bulk-link" data-a="none">Clear</button>' +
-      '<button type="button" class="dc-bulk-link dc-bulk-del">Delete</button></div>';
+      '<button type="button" class="dc-bulk-link dc-bulk-del">Delete</button></div></div>';
     ui.bulkCount = ui.bulk.querySelector('.dc-bulk-count');
     ui.bulkMail = ui.bulk.querySelector('.dc-bulk-mail');
+    ui.bulkAll = ui.bulk.querySelector('[data-a=all]');
     ui.bulkMail.addEventListener('click', () => openComposer(data.items.filter((c) => selected.has(c.id)), 0));
-    ui.bulk.querySelector('[data-a=none]').addEventListener('click', () => { selected.clear(); draw(); syncBulk(); });
-    ui.bulk.querySelector('[data-a=all]').addEventListener('click', () => { visible().slice(0, shown).forEach((c) => selected.add(c.id)); draw(); syncBulk(); });
+    ui.bulk.querySelector('[data-a=none]').addEventListener('click', () => { selected.clear(); syncPicks(); syncBulk(); });
+    ui.bulkAll.addEventListener('click', () => { rowsNow.forEach((c) => selected.add(c.id)); syncPicks(); syncBulk(); });
     ui.bulk.querySelector('[data-a=seen]').addEventListener('click', async () => {
       const ids = Array.from(selected);
       try {
@@ -1052,7 +1185,7 @@
     draw();
   }
 
-  // Esc closes the email window first, then the side panel
+  // Esc closes the email window first, then the side panel; left / right arrows walk through the creators
   function onKey(e) {
     if (!H || !H.view || !H.view.isConnected) return;
     if (composer && !composer.modal.isConnected) composer = null;      // the page was left with the window open
@@ -1067,7 +1200,13 @@
       }
       return;
     }
-    if (e.key === 'Escape' && openId && ui.panel && ui.panel.classList.contains('open')) closePanel();
+    if (openId && ui.panel && ui.panel.classList.contains('open')) {
+      if (e.key === 'Escape') closePanel();
+      else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '')) {
+        e.preventDefault();
+        step(e.key === 'ArrowRight' ? 1 : -1);
+      }
+    }
   }
 
   async function load(keepScroll) {
@@ -1078,7 +1217,9 @@
       for (const id of Array.from(selected)) if (!data.items.some((c) => c.id === id)) selected.delete(id);
       page();
       if (keepScroll) window.scrollTo(0, y);
+      return true;
     } catch (e) {
+      if (data && keepScroll) { H.toast('Could not refresh: ' + e.message, true); return false; }
       H.view.innerHTML = '';
       const n = node('div', 'notice');
       n.innerHTML = '<h3>Discovered creators isn’t available</h3><p></p>';
@@ -1086,6 +1227,7 @@
         ? 'The server hasn’t loaded creator-inbox.js yet. Put creator-inbox.js and the new server.js in the main project folder, then restart or push to GitHub.'
         : e.message;
       H.view.appendChild(n);
+      return false;
     }
   }
 
