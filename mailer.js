@@ -5,7 +5,7 @@
 // install. Set these in Railway -> Variables:
 //
 //   RESEND_API_KEY   required. Without it, emails are simply off.
-//   NOTIFY_TO        optional. Who gets the emails. Default: info@brxdge.ca
+//   NOTIFY_TO        optional. Who gets the emails. Default: hello@campuscreators.ca
 //                    (several addresses: separate with commas)
 //   MAIL_FROM        optional. Default: Campus Creators <onboarding@resend.dev>
 //                    That default sender only delivers to the address your
@@ -55,7 +55,7 @@ const LAYOUT = {
 
 module.exports = function createMailer(opts = {}) {
   const key = (process.env.RESEND_API_KEY || '').trim();
-  const to = (process.env.NOTIFY_TO || 'info@brxdge.ca').split(',').map((s) => s.trim()).filter(Boolean);
+  const to = (process.env.NOTIFY_TO || 'hello@campuscreators.ca').split(',').map((s) => s.trim()).filter(Boolean);
   const from = (process.env.MAIL_FROM || 'Campus Creators <onboarding@resend.dev>').trim();
   const siteUrl = String(opts.siteUrl || '').replace(/\/+$/, '');
   const enabled = !!key && to.length > 0;
