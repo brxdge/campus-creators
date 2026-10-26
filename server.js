@@ -386,7 +386,7 @@ app.post('/api/contact', (req, res) => {
 
 // ---- form submissions (Brands contact + Talents apply) ---------------------
 // Each form is saved to the admin inbox first, then emailed to NOTIFY_TO
-// (default info@brxdge.ca) when RESEND_API_KEY is set. See mailer.js.
+// (default hello@campuscreators.ca) when RESEND_API_KEY is set. See mailer.js.
 const submissions = require('./submissions');       // DATA_DIR is defined near the top
 app.use(submissions({ requireAdmin, dataDir: DATA_DIR, onSubmit: mailer.notifySubmission }));
 
