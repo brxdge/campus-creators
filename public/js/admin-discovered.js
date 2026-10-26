@@ -53,6 +53,7 @@
     close: svg('<path d="M6 6l12 12M18 6 6 18"/>', 18, 2.2),
     cards: svg('<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>'),
     list: svg('<path d="M4 6h16M4 12h16M4 18h16"/>'),
+    youtube: svg('<rect x="3" y="6" width="18" height="12" rx="4"/><path d="M10.5 9.5v5l4-2.5z"/>', 16),
     tiktok: svg('<path d="M14 4v10.2a3.2 3.2 0 1 1-3.2-3.2"/><path d="M14 4c.4 2.3 1.9 3.8 4.2 4"/>', 16),
     copy: svg('<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/>', 15),
     spark: svg('<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.7 5.5-4.7s4.9 1.7 5.5 4.7"/><path d="M17 8.5v5M14.5 11h5"/>', 26, 1.8),
@@ -147,7 +148,12 @@
     }
     return 'there';
   }
+  // which network a creator came from: Creator Search says "youtube" for a channel; everything older is TikTok
+  const isYt = (c) => !!c && c.platform === 'youtube';
+  const netName = (c) => (isYt(c) ? 'YouTube' : 'TikTok');
   function fill(text, c) {
+    // the starting message talks about TikTok; for a YouTube channel it says YouTube instead (the team still edits it before sending)
+    if (isYt(c)) text = String(text || '').replace(/\bTikTok\b/g, 'YouTube');
     return String(text || '').replace(/\{name\}/gi, firstName(c)).replace(/\{handle\}/gi, c.handle).replace(/\{nickname\}/gi, displayName(c));
   }
 
@@ -267,9 +273,9 @@
     return b;
   }
   function tiktokButton(c) {
-    const a = link(c.url, ICON.tiktok, 'dc-iconbtn');
-    a.setAttribute('aria-label', 'Open ' + displayName(c) + ' on TikTok');
-    a.title = 'Open on TikTok';
+    const a = link(c.url, isYt(c) ? ICON.youtube : ICON.tiktok, 'dc-iconbtn');
+    a.setAttribute('aria-label', 'Open ' + displayName(c) + ' on ' + netName(c));
+    a.title = 'Open on ' + netName(c);
     a.addEventListener('click', (e) => { e.stopPropagation(); setSeen(c, true); });
     return a;
   }
@@ -473,7 +479,7 @@
       box.appendChild(f);
       change.addEventListener('click', () => { f.hidden = !f.hidden; if (!f.hidden) { inp.focus(); inp.select(); } });
     } else {
-      box.appendChild(node('p', 'dc-muted', 'No email address was found in their bio, and Creator Search didn’t send one. If you find one on their TikTok or bio link, add it here.'));
+      box.appendChild(node('p', 'dc-muted', 'No email address was found in their bio, and Creator Search didn’t send one. If you find one on their ' + netName(c) + ' or bio link, add it here.'));
       const { f, inp } = editor('');
       box.appendChild(f);
       if (opts && opts.focusEmail) setTimeout(() => inp.focus(), 60);
@@ -521,6 +527,7 @@
     const chips = [];
     if (c.verified) chips.push(['Verified', 'accent']);
     if (c.business) chips.push([c.businessCategory ? 'Business · ' + c.businessCategory : 'Business account', '']);
+    if (isYt(c)) chips.push(['YouTube', '']);
     if (c.seller) chips.push(['TikTok Shop', '']);
     if (c.private) chips.push(['Private account', '']);
     if (chips.length) {
@@ -532,7 +539,7 @@
     head.appendChild(id);
 
     const quick = node('div', 'dc-btnrow');
-    const tt = link(c.url, ICON.tiktok + '<span>TikTok</span>' + ICON.out, 'btn ghost small');
+    const tt = link(c.url, (isYt(c) ? ICON.youtube : ICON.tiktok) + '<span>' + netName(c) + '</span>' + ICON.out, 'btn ghost small');
     quick.appendChild(tt);
     if (c.bioLink && c.bioLink.href) {
       const b = link(c.bioLink.href, ICON.link + '<span></span>' + ICON.out, 'btn ghost small dc-biolink');
@@ -584,7 +591,8 @@
     const dl = node('dl', 'dc-facts');
     const add = (k, v) => { if (v == null || v === '') return; dl.append(node('dt', null, k), node('dd', null, v)); };
     if (c.collections && c.collections.length) add('Saved in', c.collections.join(', '));
-    add('On TikTok since', c.tiktokSince ? dayOnly(c.tiktokSince) : '');
+    add('On ' + netName(c) + ' since', c.tiktokSince ? dayOnly(c.tiktokSince) : '');
+    if (isYt(c) && c.country) add('Country', c.country);
     add('Arrived', whenLong(c.receivedAt));
     if (c.updatedAt && c.updatedAt !== c.receivedAt) add('Last updated', whenLong(c.updatedAt) + (c.deliveries > 1 ? ' (sent ' + c.deliveries + ' times)' : ''));
     if (!c.avatar) add('Picture', c.photoError ? 'Not saved: ' + c.photoError : 'No picture link came with this creator.');
