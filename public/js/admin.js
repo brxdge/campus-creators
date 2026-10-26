@@ -91,7 +91,7 @@
   // While this is true, the Discovered creators button opens a "Coming soon" page and the
   // creator count next to it stays hidden. Nothing is deleted: the page, the data and the
   // receiver are all still there. Change it to false to bring the page back.
-  const DISCOVERED_COMING_SOON = true;
+  const DISCOVERED_COMING_SOON = false;
   VIEWS['discovered'] = { title: 'Discovered creators', crumb: 'Creators', desc: DISCOVERED_COMING_SOON ? '' : 'Creators you saved in Creator Search and sent to the website. Private: only visible here, never on the public site.', discovered: true };
 
   // readable labels + the order fields are shown in
