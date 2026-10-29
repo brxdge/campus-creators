@@ -384,7 +384,7 @@ app.post('/api/contact', (req, res) => {
   res.status(501).json({ error: 'Contact endpoint not wired up yet.' });
 });
 
-// ---- form submissions (Brands contact + Talents apply) ---------------------
+// ---- form submissions (Brands contact, Talents apply, Affiliates sign-up) ---
 // Each form is saved to the admin inbox first, then emailed to NOTIFY_TO
 // (default hello@campuscreators.ca) when RESEND_API_KEY is set. See mailer.js.
 const submissions = require('./submissions');       // DATA_DIR is defined near the top
@@ -407,7 +407,7 @@ app.get('/robots.txt', (req, res) => {
 });
 
 // sitemap: the two public pages, dated by when their HTML last changed
-const PAGES = [['/', 'index.html', '1.0'], ['/talents', 'talents.html', '0.8']];
+const PAGES = [['/', 'index.html', '1.0'], ['/talents', 'talents.html', '0.8'], ['/affiliates', 'affiliates.html', '0.6']];
 app.get('/sitemap.xml', (req, res) => {
   const urls = PAGES.map(([loc, file, pri]) => {
     let mod = '';
@@ -425,6 +425,12 @@ app.get('/index.html', (req, res) => res.redirect(301, '/' + (req._parsedUrl.sea
 app.get(['/talents', '/talents/'], (req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, 'public', 'talents.html'));
+});
+// the affiliate sign-up page (its form saves to the Affiliate applications inbox in the admin)
+app.get('/affiliates.html', (req, res) => res.redirect(301, '/affiliates' + (req._parsedUrl.search || '')));
+app.get(['/affiliates', '/affiliates/'], (req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile(path.join(__dirname, 'public', 'affiliates.html'));
 });
 
 // Server code must never be downloadable, even if it's copied into public/ by mistake.
