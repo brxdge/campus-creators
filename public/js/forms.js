@@ -1,5 +1,5 @@
 // ============================================================
-// Brands contact form + Talents application form.
+// Brands contact form + Talents application form + Affiliates sign-up form.
 // - checks every field before sending and shows the problem right
 //   under the field (no browser pop-ups hidden behind the modal)
 // - accepts Instagram/TikTok as @handle, handle or full link
@@ -206,6 +206,91 @@
       const x = document.getElementById('applyModalClose');
       if (x) x.click();
       setTimeout(() => resetView(form, doneEl, msg), 350);
+    });
+  })();
+
+  // ---------------- Affiliates (the /affiliates page, not a pop-up) ----------------
+  (function affiliateForm() {
+    const form = document.getElementById('affiliateForm');
+    const msg = document.getElementById('affiliateFormMsg');
+    const doneEl = document.getElementById('affiliateDone');
+    if (!form || !msg || !doneEl) return;
+    liveClear(form);
+    const f = form.elements;
+    // the red "a few things need fixing" line goes away once the last highlighted problem is fixed
+    const hush = () => { if (!form.querySelector('.is-invalid')) msg.className = 'tal-form-msg'; };
+    form.addEventListener('input', hush);
+    form.addEventListener('change', hush);
+
+    // "Other" (outside Canada and the US) reveals a box to type the region in
+    const other = form.querySelector('.tal-other');
+    const syncOther = () => {
+      const on = f.province.value === 'Other';
+      other.hidden = !on;
+      if (!on) {
+        f.provinceOther.value = '';
+        other.classList.remove('is-invalid');
+        const er = other.querySelector(':scope > .field-err'); if (er) er.remove();
+        f.provinceOther.removeAttribute('aria-invalid');
+      }
+    };
+    f.province.addEventListener('change', syncOther);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors(form);
+      msg.className = 'tal-form-msg';
+      const need = (k, t) => { if (!String(f[k].value || '').trim()) setError(f[k], t); };
+      need('fullName', 'Please enter your full name.');
+      const age = f.age.value.trim();
+      if (!age) setError(f.age, 'Please enter your age.');
+      else if (!/^\d{1,3}$/.test(age) || Number(age) < 13 || Number(age) > 99) setError(f.age, 'Please enter your age as a number.');
+      need('email', 'Please enter your email.');
+      if (f.email.value.trim() && !EMAIL.test(f.email.value.trim())) setError(f.email, 'That email doesn’t look right.');
+      need('phone', 'Please enter your phone number.');
+      if (f.phone.value.trim() && f.phone.value.replace(/\D/g, '').length < 10) setError(f.phone, 'Please enter a 10-digit phone number.');
+      need('city', 'Please enter your city.');
+      if (!f.province.value) setError(f.province, 'Please pick your province or state.');
+      else if (f.province.value === 'Other') need('provinceOther', 'Please tell us where you are.');
+      const ig = handleOf(f.instagram.value);
+      if (!f.instagram.value.trim()) setError(f.instagram, 'Please add your Instagram.');
+      else if (!validHandle(ig)) setError(f.instagram, 'Enter your Instagram handle, like @yourname.');
+      const tt = handleOf(f.tiktok.value);
+      if (f.tiktok.value.trim() && !validHandle(tt)) setError(f.tiktok, 'Enter your TikTok handle, like @yourname.');
+      const exp = form.querySelector('input[name="experience"]:checked');
+      if (!exp) setError(form.querySelector('input[name="experience"]'), 'Please pick Yes or No.');
+      if (form.querySelector('.is-invalid')) {
+        msg.textContent = 'A few things need fixing. They’re highlighted above.';
+        msg.className = 'tal-form-msg show err';
+        showFirstError(form);
+        return;
+      }
+
+      const fields = {
+        fullName: f.fullName.value.trim(),
+        age,
+        email: f.email.value.trim(),
+        phone: f.phone.value.trim(),
+        city: f.city.value.trim(),
+        province: f.province.value === 'Other' ? f.provinceOther.value.trim() : f.province.value,
+        instagram: 'https://instagram.com/' + ig,
+        experience: exp.value,
+      };
+      if (tt) fields.tiktok = 'https://www.tiktok.com/@' + tt;
+      if (f.otherPlatforms.value.trim()) fields.otherPlatforms = f.otherPlatforms.value.trim();
+      if (f.notes.value.trim()) fields.notes = f.notes.value.trim();
+
+      const btn = form.querySelector('[type=submit]');
+      btn.disabled = true; btn.classList.add('is-loading');
+      try {
+        await send('affiliate', fields, f.cc_hp ? f.cc_hp.value : '');
+        msg.textContent = ''; msg.className = 'tal-form-msg';
+        done(form, doneEl);
+        doneEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = 'tal-form-msg show err';
+      } finally { btn.disabled = false; btn.classList.remove('is-loading'); }
     });
   })();
 })();
