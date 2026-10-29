@@ -49,7 +49,7 @@
   const KEYS = '<p class="tour-hint">About a minute. Use the buttons or the <kbd>←</kbd> <kbd>→</kbd> keys. <kbd>Esc</kbd> ends the tour.</p>';
   const REPLAY = '<p class="tour-hint">Replay this tour any time with the <b>Take a tour</b> button at the top of the page.</p>';
 
-  // ---------- Inbox (brand enquiries and talent applications) ----------
+  // ---------- Inbox (brand enquiries, talent applications and affiliate applications) ----------
   let openedByTour = null;
   const inboxStates = {
     // shows the first message open without marking it as read
@@ -68,28 +68,33 @@
 
   function inboxSteps(type) {
     const brand = type === 'brand';
+    const aff = type === 'affiliate';
+    const label = brand ? 'Brand enquiries' : aff ? 'Affiliate sign-ups' : 'Talent applications';
+    const msgWord = brand ? 'message' : aff ? 'sign-up' : 'application';      // what one entry is called
     const hasRows = () => !!$('.msg');
     const steps = [];
 
     steps.push({
-      title: brand ? 'Brand enquiries' : 'Talent applications',
+      title: label,
       body: brand
         ? '<p>Every message from the contact form on the Brands page lands here. It is how brands first reach you, so it is worth checking every day.</p>' + KEYS
-        : '<p>Everyone who fills in the Apply form on the Talents page lands here. It is your pipeline of future campus creators.</p>' + KEYS,
+        : aff
+          ? '<p>Everyone who signs up on the Affiliates page (campuscreators.ca/affiliates) lands here. It is your pipeline of future affiliate partners.</p>' + KEYS
+          : '<p>Everyone who fills in the Apply form on the Talents page lands here. It is your pipeline of future campus creators.</p>' + KEYS,
     });
 
     steps.push({
       target: () => visibleEl('#sideNav a[data-view="inbox-' + type + '"]'),
       place: 'right',
       title: 'The red number',
-      body: '<p>The number next to ' + (brand ? 'Brand enquiries' : 'Talent applications') + ' in the menu counts the ones nobody has opened yet. The Dashboard adds both inboxes together as <b>Unread messages</b>.</p>' +
-        '<p>When email alerts are switched on, each new ' + (brand ? 'message' : 'application') + ' is also emailed to the team address, so you do not have to keep this page open.</p>',
+      body: '<p>The number next to ' + label + ' in the menu counts the ones nobody has opened yet. The Dashboard adds all the inboxes together as <b>Unread messages</b>.</p>' +
+        '<p>When email alerts are switched on, each new ' + msgWord + ' is also emailed to the team address, so you do not have to keep this page open.</p>',
     });
 
     steps.push({
       target: '.inbox-bar .seg',
       title: 'Everything, or only what is new',
-      body: '<p><b>All</b> lists every ' + (brand ? 'message' : 'application') + '. <b>Unread</b> lists only the ones nobody has opened.</p>' +
+      body: '<p><b>All</b> lists every ' + msgWord + '. <b>Unread</b> lists only the ones nobody has opened.</p>' +
         '<p>Treat Unread as your to-do list. When it says 0, you are caught up.</p>',
     });
 
@@ -98,7 +103,9 @@
       title: 'Find anything',
       body: brand
         ? '<p>Search looks through the whole message: name, email, company, budget and what they wrote.</p><p>Try a company name to see whether that brand has written before.</p>'
-        : '<p>Search looks through the whole application: name, school, hometown, Instagram, TikTok and interests.</p><p>Type a school to see who could cover that campus.</p>',
+        : aff
+          ? '<p>Search looks through the whole sign-up: name, email, city, province or state, Instagram and TikTok.</p><p>Type a city to see who signed up from there.</p>'
+          : '<p>Search looks through the whole application: name, school, hometown, Instagram, TikTok and interests.</p><p>Type a school to see who could cover that campus.</p>',
     });
 
     steps.push({
@@ -110,10 +117,12 @@
 
     steps.push({
       target: '.msg',
-      title: 'One row per ' + (brand ? 'enquiry' : 'application'),
+      title: 'One row per ' + (brand ? 'enquiry' : msgWord),
       body: brand
         ? '<p>Bold text with a red dot means it has not been opened. Each row shows the name, email, company and budget, then the start of the message.</p><p>Click a row to open it.</p>'
-        : '<p>Bold text with a red dot means it has not been opened. Each row shows the name, email, school and year, then their interests.</p><p>Click a row to open it.</p>',
+        : aff
+          ? '<p>Bold text with a red dot means it has not been opened. Each row shows the name, email, city and province or state and age, then whether they have done affiliate or brand work before.</p><p>Click a row to open it.</p>'
+          : '<p>Bold text with a red dot means it has not been opened. Each row shows the name, email, school and year, then their interests.</p><p>Click a row to open it.</p>',
     });
 
     steps.push({
@@ -123,7 +132,9 @@
       title: brand ? 'Everything they sent' : 'Everything they filled in',
       body: brand
         ? '<p>Contact details, website or social links, budget, timeline and what they are launching.</p><p>Opening a message marks it as read. In this tour it stays as it is.</p>'
-        : '<p>Contact details, school and year, hometown, organizations, Instagram, TikTok, interests and who referred them.</p><p>Look at their Instagram and TikTok before you reply. Their birthday is only kept here: it is left out of the alert email.</p>',
+        : aff
+          ? '<p>Contact details, city, province or state, Instagram, TikTok, other platforms, whether they have done this kind of work before, and anything else they wanted you to know.</p><p>Look at their Instagram and TikTok before you reply.</p>'
+          : '<p>Contact details, school and year, hometown, organizations, Instagram, TikTok, interests and who referred them.</p><p>Look at their Instagram and TikTok before you reply. Their birthday is only kept here: it is left out of the alert email.</p>',
     });
 
     steps.push({
@@ -147,7 +158,7 @@
     steps.push({
       target: '.inbox-bar a.btn',
       title: 'Export to a spreadsheet',
-      body: '<p>Downloads every ' + (brand ? 'enquiry' : 'application') + ' as a CSV file, including ones the filter or search is hiding. Open it in Excel or Google Sheets.</p>' +
+      body: '<p>Downloads every ' + (brand ? 'enquiry' : msgWord) + ' as a CSV file, including ones the filter or search is hiding. Open it in Excel or Google Sheets.</p>' +
         '<p>Export now and then. It doubles as a backup.</p>',
     });
 
@@ -155,7 +166,7 @@
       title: 'You are ready',
       body: brand
         ? '<p>A simple routine:</p><ol><li>Open <b>Unread</b> and answer each message.</li><li>Use <b>Mark as unread</b> for the ones you need to come back to.</li><li>Export now and then, and delete spam.</li></ol>' + REPLAY
-        : '<p>A simple routine:</p><ol><li>Open <b>Unread</b> and read each application.</li><li>Check their Instagram and TikTok, then reply from the row.</li><li>Use <b>Mark as unread</b> for the ones to revisit. Export now and then, and clear out the rest.</li></ol>' + REPLAY,
+        : '<p>A simple routine:</p><ol><li>Open <b>Unread</b> and read each ' + msgWord + '.</li><li>Check their Instagram and TikTok, then reply from the row.</li><li>Use <b>Mark as unread</b> for the ones to revisit. Export now and then, and clear out the rest.</li></ol>' + REPLAY,
     });
     return steps;
   }
@@ -327,6 +338,7 @@
   const TOURS = {
     'inbox-brand':  { ready: '.inbox-bar', states: inboxStates, steps: () => inboxSteps('brand') },
     'inbox-talent': { ready: '.inbox-bar', states: inboxStates, steps: () => inboxSteps('talent') },
+    'inbox-affiliate': { ready: '.inbox-bar', states: inboxStates, steps: () => inboxSteps('affiliate') },
     'discovered':   { ready: '.dc-head, .dc-setup', states: discoveredStates, steps: discoveredSteps },
   };
 
