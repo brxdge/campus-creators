@@ -88,6 +88,7 @@
   Object.keys(GROUPS).forEach((k) => { VIEWS[k] = GROUPS[k]; });
   VIEWS['inbox-brand'] = { title: 'Brand enquiries', crumb: 'Inbox', desc: 'Messages sent through the contact form on the Brands page.', inbox: 'brand' };
   VIEWS['inbox-talent'] = { title: 'Talent applications', crumb: 'Inbox', desc: 'Applications sent through the Apply form on the Talents page.', inbox: 'talent' };
+  VIEWS['inbox-affiliate'] = { title: 'Affiliate sign-ups', crumb: 'Inbox', desc: 'People who signed up through the form on the Affiliates page (campuscreators.ca/affiliates).', inbox: 'affiliate' };
   // While this is true, the Discovered creators button opens a "Coming soon" page and the
   // creator count next to it stays hidden. Nothing is deleted: the page, the data and the
   // receiver are all still there. Change it to false to bring the page back.
@@ -102,10 +103,15 @@
       ['birthday', 'Birthday'], ['hometown', 'Hometown'], ['university', 'University'], ['universityOther', 'Other school'],
       ['year', 'Year'], ['organizations', 'Organizations'], ['instagram', 'Instagram'], ['tiktok', 'TikTok'],
       ['interests', 'Interests'], ['referredBy', 'Referred by']],
+    affiliate: [['fullName', 'Full name'], ['age', 'Age'], ['email', 'Email'], ['phone', 'Phone'], ['city', 'City'],
+      ['province', 'Province / State'], ['instagram', 'Instagram'], ['tiktok', 'TikTok'], ['otherPlatforms', 'Other platforms'],
+      ['experience', 'Done affiliate, ambassador or brand work before?'], ['notes', 'Anything else']],
   };
+  // the words used for each inbox in empty states and delete prompts
+  const NOUN = { brand: ['enquiry', 'enquiries'], talent: ['application', 'applications'], affiliate: ['sign-up', 'sign-ups'] };
 
   let submissions = null;       // null = inbox not available on the server
-  let unread = { brand: 0, talent: 0 };
+  let unread = { brand: 0, talent: 0, affiliate: 0 };
   let inboxFilter = 'all';
   let inboxQuery = '';
 
@@ -215,10 +221,10 @@
     try {
       const data = await api('/api/admin/submissions');
       submissions = data.submissions || [];
-      unread = data.unread || { brand: 0, talent: 0 };
+      unread = Object.assign({ brand: 0, talent: 0, affiliate: 0 }, data.unread || {});
     } catch (e) {
       submissions = null;
-      unread = { brand: 0, talent: 0 };
+      unread = { brand: 0, talent: 0, affiliate: 0 };
     }
     document.querySelectorAll('[data-badge]').forEach((b) => {
       const n = unread[b.dataset.badge] || 0;
@@ -299,7 +305,7 @@
     [
       [realBrands.length, 'Brands'],
       [brandFiles, 'Brand files'],
-      [submissions ? (unread.brand + unread.talent) : '\u2013', 'Unread messages'],
+      [submissions ? (unread.brand + unread.talent + unread.affiliate) : '\u2013', 'Unread messages'],
       [slotsFilled + ' / ' + slotsTotal, 'Placeholders filled'],
     ].forEach(([num, label]) => {
       const s = el('div', 'stat');
@@ -311,9 +317,9 @@
     const list = el('div', 'overview');
     const rows = [];
     if (submissions) {
-      ['brand', 'talent'].forEach((t) => {
+      ['brand', 'talent', 'affiliate'].forEach((t) => {
         const total = submissions.filter((s) => s.type === t).length;
-        rows.push(['inbox-' + t, t === 'brand' ? 'Brand enquiries' : 'Talent applications', 'Inbox', total - unread[t], total, 'read']);
+        rows.push(['inbox-' + t, VIEWS['inbox-' + t].title, 'Inbox', total - unread[t], total, 'read']);
       });
     }
     rows.push(['brands', 'Creators in Action', 'Brands page', realBrands.filter((b) => b.media.length).length, realBrands.length || 0, 'brands with media']);
@@ -361,7 +367,7 @@
         <button type="button" data-f="all">All <span>${all.length}</span></button>
         <button type="button" data-f="unread">Unread <span>${all.filter((s) => !s.read).length}</span></button>
       </div>
-      <input type="text" class="inbox-search" placeholder="Search name, email, school…">
+      <input type="text" class="inbox-search" placeholder="${type === 'affiliate' ? 'Search name, email, city…' : 'Search name, email, school…'}">
       <button class="btn small bulk-del" type="button" hidden>Delete selected</button>
       <a class="btn ghost small" href="/api/admin/submissions.csv?type=${type}">Export CSV</a>`;
     const selected = new Set();
@@ -389,7 +395,7 @@
         (!q || JSON.stringify(s.data).toLowerCase().indexOf(q) !== -1));
       list.innerHTML = '';
       if (!rows.length) {
-        list.innerHTML = `<p class="empty inbox-empty">${all.length ? 'Nothing matches.' : 'No ' + (type === 'brand' ? 'enquiries' : 'applications') + ' yet.'}</p>`;
+        list.innerHTML = `<p class="empty inbox-empty">${all.length ? 'Nothing matches.' : 'No ' + NOUN[type][1] + ' yet.'}</p>`;
         return;
       }
       rows.forEach((s) => list.appendChild(inboxRow(s, type, selected, syncBulk)));
@@ -400,8 +406,8 @@
   async function removeSubmissions(ids, type) {
     if (!ids.length) return;
     const label = ids.length === 1
-      ? `this ${type === 'brand' ? 'enquiry' : 'application'}`
-      : `${ids.length} ${type === 'brand' ? 'enquiries' : 'applications'}`;
+      ? `this ${NOUN[type][0]}`
+      : `${ids.length} ${NOUN[type][1]}`;
     if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
     let failed = 0;
     for (const id of ids) {
@@ -414,11 +420,15 @@
 
   function inboxRow(s, type, selected, onSelect) {
     const d = s.data || {};
-    const name = [d.firstName, d.lastName].filter(Boolean).join(' ') || '(no name)';
+    const name = d.fullName || [d.firstName, d.lastName].filter(Boolean).join(' ') || '(no name)';
     const sub = type === 'brand'
       ? [d.company, d.budget].filter(Boolean).join(' \u00b7 ')
-      : [d.university === 'Other' && d.universityOther ? d.universityOther : d.university, d.year].filter(Boolean).join(' \u00b7 ');
-    const preview = type === 'brand' ? (d.message || '') : (Array.isArray(d.interests) ? d.interests.join(', ') : '');
+      : type === 'affiliate'
+        ? [[d.city, d.province].filter(Boolean).join(', '), d.age ? 'Age ' + d.age : ''].filter(Boolean).join(' \u00b7 ')
+        : [d.university === 'Other' && d.universityOther ? d.universityOther : d.university, d.year].filter(Boolean).join(' \u00b7 ');
+    const preview = type === 'brand' ? (d.message || '')
+      : type === 'affiliate' ? (d.experience ? 'Past brand work: ' + d.experience : '')
+      : (Array.isArray(d.interests) ? d.interests.join(', ') : '');
 
     const row = el('div', 'msg' + (s.read ? '' : ' unread'));
     row.innerHTML = `
@@ -463,7 +473,8 @@
     body.appendChild(dl);
 
     const actions = el('div', 'msg-actions');
-    const replySubject = type === 'brand' ? 'Re: your enquiry to Campus Creators' : 'Your Campus Creators application';
+    const replySubject = type === 'brand' ? 'Re: your enquiry to Campus Creators'
+      : type === 'affiliate' ? 'Your Campus Creators affiliate sign-up' : 'Your Campus Creators application';
     actions.innerHTML = `
       <a class="btn small" href="mailto:${encodeURIComponent(d.email || '')}?subject=${encodeURIComponent(replySubject)}">Reply by email</a>
       <button class="btn ghost small" type="button" data-act="toggle">Mark as unread</button>
