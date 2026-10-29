@@ -30,6 +30,18 @@ const TYPES = {
     fields: ['firstName', 'lastName', 'email', 'phone', 'birthMonth', 'birthDay', 'birthYear', 'hometown',
       'university', 'universityOther', 'year', 'organizations', 'instagram', 'tiktok', 'interests', 'referredBy'],
   },
+  // the /affiliates page: people applying to join the affiliate team
+  affiliate: {
+    required: ['fullName', 'age', 'email', 'phone', 'city', 'province', 'instagram', 'experience'],
+    fields: ['fullName', 'age', 'email', 'phone', 'city', 'province', 'instagram', 'tiktok', 'otherPlatforms', 'experience', 'notes'],
+    // extra checks the generic ones below can't make; returns a message, or '' when fine
+    check(data) {
+      const age = Number(data.age);
+      if (!/^\d{1,3}$/.test(String(data.age)) || age < 13 || age > 99) return 'Please enter your age as a number.';
+      if (data.experience !== 'Yes' && data.experience !== 'No') return 'Please answer Yes or No.';
+      return '';
+    },
+  },
 };
 
 module.exports = function submissions(opts = {}) {
@@ -81,7 +93,9 @@ module.exports = function submissions(opts = {}) {
   const recentSame = new Map();
   const low = (v) => String(v || '').trim().toLowerCase();
   function sameKey(type, data) {
-    const who = type === 'brand' ? [data.email, data.firstName, data.company, data.message] : [data.email, data.firstName, data.lastName];
+    const who = type === 'brand' ? [data.email, data.firstName, data.company, data.message]
+      : type === 'affiliate' ? [data.email, data.fullName]
+      : [data.email, data.firstName, data.lastName];
     return crypto.createHash('sha1').update(type + '\n' + who.map(low).join('\n')).digest('hex');
   }
   function seenJustNow(key) {
@@ -119,6 +133,8 @@ module.exports = function submissions(opts = {}) {
     const missing = def.required.filter((k) => !data[k]);
     if (missing.length) return res.status(400).json({ error: 'Please fill in all required fields.' });
     if (data.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) return res.status(400).json({ error: 'Please enter a valid email.' });
+    const problem = def.check ? def.check(data) : '';
+    if (problem) return res.status(400).json({ error: problem });
 
     const again = sameKey(body.type, data);
     if (seenJustNow(again)) return res.json({ ok: true });
@@ -148,7 +164,7 @@ module.exports = function submissions(opts = {}) {
   // ---------- admin ----------
   router.get('/api/admin/submissions', requireAdmin, (req, res) => {
     const list = readAll();
-    const unread = { brand: 0, talent: 0 };
+    const unread = { brand: 0, talent: 0, affiliate: 0 };
     list.forEach((s) => { if (!s.read && unread[s.type] !== undefined) unread[s.type]++; });
     res.json({ submissions: list, unread });
   });
@@ -171,7 +187,7 @@ module.exports = function submissions(opts = {}) {
   });
 
   router.get('/api/admin/submissions.csv', requireAdmin, (req, res) => {
-    const type = req.query.type === 'talent' ? 'talent' : 'brand';
+    const type = req.query.type === 'talent' ? 'talent' : req.query.type === 'affiliate' ? 'affiliate' : 'brand';
     const cols = ['createdAt'].concat(TYPES[type].fields);
     // quote every cell, and neutralise spreadsheet formulas (=, +, -, @) so a
     // submitted value can never run as a formula when the CSV is opened in Excel/Sheets
