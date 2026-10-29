@@ -51,6 +51,13 @@ const LAYOUT = {
       ['Instagram', ['instagram']], ['TikTok', ['tiktok']], ['Interests', ['interests']], ['Referred by', ['referredBy']]],
     long: null,
   },
+  affiliate: {
+    heading: 'New affiliate sign-up',
+    rows: [['Name', ['fullName']], ['Age', ['age']], ['Email', ['email']], ['Phone', ['phone']], ['City', ['city']],
+      ['Province / State', ['province']], ['Instagram', ['instagram']], ['TikTok', ['tiktok']],
+      ['Other platforms', ['otherPlatforms']], ['Done affiliate, ambassador or brand work before?', ['experience']]],
+    long: ['Anything else', 'notes'],
+  },
 };
 
 module.exports = function createMailer(opts = {}) {
@@ -139,10 +146,13 @@ module.exports = function createMailer(opts = {}) {
     const long = lay.long && d[lay.long[1]] ? [lay.long[0], asText(d[lay.long[1]])] : null;
 
     const when = new Date(entry.createdAt || Date.now()).toLocaleString('en-CA', { timeZone: 'America/Toronto', dateStyle: 'medium', timeStyle: 'short' });
-    const who = [asText(d.firstName), asText(d.lastName)].filter(Boolean).join(' ');
+    const who = asText(d.fullName) || [asText(d.firstName), asText(d.lastName)].filter(Boolean).join(' ');
+    const where = [asText(d.city), asText(d.province)].filter(Boolean).join(', ');
     const subject = oneLine(entry.type === 'brand'
       ? 'New brand inquiry: ' + (asText(d.company) || who)
-      : 'New ambassador application: ' + who + (d.university ? ' (' + asText(d.university) + ')' : '')).slice(0, 150);
+      : entry.type === 'affiliate'
+        ? 'New affiliate sign-up: ' + who + (where ? ' (' + where + ')' : '')
+        : 'New ambassador application: ' + who + (d.university ? ' (' + asText(d.university) + ')' : '')).slice(0, 150);
     const adminUrl = siteUrl ? siteUrl + '/admin' : '';
 
     const text = [lay.heading + ' (' + when + ' Toronto time)', '']
